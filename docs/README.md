@@ -1,2 +1,2 @@
-#Smart Recipe
+# Smart Recipe
 A online web application that leverages AI to match whatever ingredients you have in your house to delicious, affordable, real recipes that you make on a busy weeknight, or a Sunday dinner!
