@@ -1,69 +1,115 @@
-import Image from "next/image";
 
-export default function Home() {
+import Link from "next/link";
+
+const steps = [
+  {
+    number: "01",
+    title: "Add ingredients",
+    description:
+      "List what you have in your kitchen, including quantities.",
+  },
+  {
+    number: "02",
+    title: "Set the details",
+    description:
+      "Choose your cooking time, servings, tools and meal preferences.",
+  },
+  {
+    number: "03",
+    title: "Find or generate",
+    description:
+      "Browse matching recipes or explore a new meal idea.",
+  },
+  {
+    number: "04",
+    title: "Save and shop",
+    description:
+      "Save your favourites and collect missing ingredients in one list.",
+  },
+];
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="page-container home-page">
+      <section className="hero panel">
+        <span className="eyebrow">YOUR KITCHEN, YOUR POSSIBILITIES</span>
+
+        <h1>
+          Good food starts
+          <br />
+          with <span className="accent-text">what you already have.</span>
+        </h1>
+
+        <p className="hero-description">
+          Tell us what's in your kitchen. We'll help you
+          find inspiration, discover recipes and decide
+          what's for dinner.
+        </p>
+
+        <div className="hero-logo" aria-hidden="true">
+          <span>SR</span>
+        </div>
+
+        <Link href="/search" className="button button-primary">
+          Start searching <span aria-hidden="true">→</span>
+        </Link>
+
+        <p className="hero-note">
+          Less food waste. More delicious possibilities.
+        </p>
+      </section>
+
+      <section className="section-block">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">SIMPLE BY DESIGN</span>
+            <h2>How it works</h2>
+          </div>
+          <p>From ingredients to inspiration in four steps.</p>
+        </div>
+
+        <div className="steps-grid">
+          {steps.map((step) => (
+            <article className="step-card panel" key={step.number}>
+              <span className="step-number">{step.number}</span>
+              <div className="step-illustration" aria-hidden="true">
+                {["✳", "◷", "✦", "✓"][Number(step.number) - 1]}
+              </div>
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="info-grid">
+        <article className="panel info-panel">
+          <span className="eyebrow">GETTING STARTED</span>
+          <h2>Make it personal</h2>
+          <ol>
+            <li>Add your owned ingredients.</li>
+            <li>Set your dietary preferences and allergies.</li>
+            <li>Search for meals that suit your kitchen.</li>
+            <li>Save recipes and organise your shopping.</li>
+          </ol>
+          <Link href="/account" className="text-link">
+            Set up your profile →
+          </Link>
+        </article>
+
+        <article className="panel info-panel tinted-panel">
+          <span className="eyebrow">A LITTLE TIP</span>
+          <h2>Start with what you have</h2>
+          <p>
+            Recipes can be ranked by how well your ingredients
+            match. If you can't find the right meal, try
+            generating a new idea.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          <Link href="/search" className="text-link">
+            Explore recipe search →
+          </Link>
+        </article>
+      </section>
     </div>
   );
 }
