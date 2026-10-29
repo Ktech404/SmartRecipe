@@ -6,7 +6,7 @@ const steps = [
     number: "01",
     title: "Add ingredients",
     description:
-      "List what you have in your kitchen, including quantities.",
+      "List the ingredients you have in your kitchen, including quantities.",
   },
   {
     number: "02",
@@ -18,7 +18,7 @@ const steps = [
     number: "03",
     title: "Find or generate",
     description:
-      "Browse matching recipes or explore a new meal idea.",
+      "Browse matching recipes and explore a new meal idea, or generate one!",
   },
   {
     number: "04",
@@ -35,20 +35,21 @@ export default function HomePage() {
         <span className="eyebrow">YOUR KITCHEN, YOUR POSSIBILITIES</span>
 
         <h1>
-          Good food starts
+          A great meal starts
           <br />
           with <span className="accent-text">what you already have.</span>
         </h1>
 
         <p className="hero-description">
-          Tell us what's in your kitchen. We'll help you
-          find inspiration, discover recipes and decide
-          what's for dinner.
+          Tell us what's in your kitchen, then leave the 
+          hard part to us. We'll help you find inspiration, 
+          discover recipes, and decide what's for dinner.
         </p>
 
         <div className="hero-logo" aria-hidden="true">
           <span>SR</span>
         </div>
+        
 
         <Link href="/search" className="button button-primary">
           Start searching <span aria-hidden="true">→</span>

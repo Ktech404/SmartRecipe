@@ -10,7 +10,7 @@ export default function Footer() {
         </Link>
 
         <p>
-          Make the most of what's in your kitchen.
+          Cook smarter, not harder.
         </p>
 
         <nav aria-label="Footer navigation">
@@ -21,8 +21,7 @@ export default function Footer() {
         </nav>
 
         <p className="copyright">
-          {/*need to fix the handling for how we fetch the date here. */}
-          © {new Date().getFullYear()} SmartRecipe
+          © 2026 SmartRecipe
         </p>
       </div>
     </footer>

@@ -223,6 +223,8 @@ export default function MyRecipesPage() {
                     type="button"
                     className="button button-secondary button-full"
                     onClick={() =>
+                        //update this so that the link points to the page for the recipe. As in, the functionality behind that.
+                        //Can't do much about it until we have the real data but can do like recipe search results page.
                       window.alert(
                         `${recipe.name}: recipe details will be available when the recipe-detail functionality is added.`
                       )

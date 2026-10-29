@@ -2,44 +2,26 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Ingredient = {
-  id: number;
+  id: string;
   name: string;
   quantity: string;
   unit: string;
 };
 
-{/*Sample recipe data.*/}
+/* Sample ingredient data for the prototype. */
 const initialIngredients: Ingredient[] = [
-  { id: 1, name: "Chicken breast", quantity: "500", unit: "g" },
-  { id: 2, name: "Rice", quantity: "2", unit: "cups" },
-  { id: 3, name: "Garlic", quantity: "4", unit: "cloves" },
-  { id: 4, name: "Lemon", quantity: "2", unit: "whole" },
-];
-
-const sampleResults = [
-  {
-    name: "Lemon garlic chicken",
-    time: "25 min",
-    match: "Best match",
-    description: "A bright, simple chicken dinner with garlic and lemon.",
-  },
-  {
-    name: "Chicken fried rice",
-    time: "20 min",
-    match: "Partial match",
-    description: "A quick rice dish with chicken and aromatic garlic.",
-  },
-  {
-    name: "Lemon rice bowl",
-    time: "15 min",
-    match: "Low match",
-    description: "A flexible rice bowl with fresh lemon flavours.",
-  },
+  { id: "1", name: "Chicken breast", quantity: "500", unit: "g" },
+  { id: "2", name: "Rice", quantity: "2", unit: "cups" },
+  { id: "3", name: "Garlic", quantity: "4", unit: "cloves" },
+  { id: "4", name: "Lemon", quantity: "2", unit: "whole" },
 ];
 
 export default function SearchPage() {
+  const router = useRouter();
+
   const [ingredients, setIngredients] =
     useState<Ingredient[]>(initialIngredients);
   const [ingredientName, setIngredientName] = useState("");
@@ -49,8 +31,6 @@ export default function SearchPage() {
   const [servings, setServings] = useState("2");
   const [tools, setTools] = useState<string[]>(["Oven"]);
   const [mealDescription, setMealDescription] = useState("");
-  const [mode, setMode] = useState("search");
-  const [searched, setSearched] = useState(false);
 
   function addIngredient() {
     if (!ingredientName.trim()) return;
@@ -58,7 +38,7 @@ export default function SearchPage() {
     setIngredients((current) => [
       ...current,
       {
-        id: Date.now(),
+        id: crypto.randomUUID(),
         name: ingredientName.trim(),
         quantity: quantity.trim() || "1",
         unit,
@@ -69,7 +49,7 @@ export default function SearchPage() {
     setQuantity("");
   }
 
-  function removeIngredient(id: number) {
+  function removeIngredient(id: string) {
     setIngredients((current) =>
       current.filter((item) => item.id !== id)
     );
@@ -83,9 +63,30 @@ export default function SearchPage() {
     );
   }
 
-  function discoverRecipes(selectedMode: string) {
-    setMode(selectedMode);
-    setSearched(true);
+  function discoverRecipes(mode: string) {
+    // Keep the search details in the URL for future functionality.
+    const params = new URLSearchParams();
+
+    const query = [
+      ...ingredients.map((ingredient) => ingredient.name),
+      mealDescription.trim(),
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    if (query) {
+      params.set("q", query);
+    }
+
+    params.set("mode", mode);
+    params.set("time", maxTime);
+    params.set("servings", servings || "2");
+
+    if (tools.length > 0) {
+      params.set("tools", tools.join(","));
+    }
+
+    router.push(`/search/results?${params.toString()}`);
   }
 
   return (
@@ -94,7 +95,8 @@ export default function SearchPage() {
         <span className="eyebrow">YOUR NEXT MEAL STARTS HERE</span>
         <h1>Search &amp; generate recipes</h1>
         <p>
-          Use your current ingredients or your cuisine preferences to find your next favorite meal.
+          Use your current ingredients or your cuisine preferences to find
+          your next favorite meal.
         </p>
       </div>
 
@@ -106,7 +108,7 @@ export default function SearchPage() {
         >
           <span className="discovery-icon">✳</span>
           <strong>Use my ingredients</strong>
-          <span>Find meals from what's already in your kitchen.</span>
+          <span>Find meals from what&apos;s already in your kitchen.</span>
           <span className="text-link">Find matches →</span>
         </button>
 
@@ -117,10 +119,11 @@ export default function SearchPage() {
         >
           <span className="discovery-icon">◎</span>
           <strong>Explore my preferences</strong>
-          <span>Discover meals based on cuisines and dietary needs.</span>
+          <span>
+            Discover meals based on cuisines and dietary needs.
+          </span>
           <span className="text-link">Explore meals →</span>
         </button>
-        {/*Still have the option to add the "surprise me", might cut.*/}
       </section>
 
       <div className="or-divider">
@@ -239,7 +242,6 @@ export default function SearchPage() {
               value={maxTime}
               onChange={(event) => setMaxTime(event.target.value)}
             >
-                {/*give the user the option to enter their own time.*/}
               <option value="15">15 minutes</option>
               <option value="30">30 minutes</option>
               <option value="45">45 minutes</option>
@@ -263,19 +265,26 @@ export default function SearchPage() {
           <div className="field-group">
             <span className="field-label">Cooking tools</span>
             <div className="chip-group">
-              {["Oven", "Air fryer", "Stovetop", "Microwave", "Blender", "Food processor"].map(
-                (tool) => (
-                  <button
-                    type="button"
-                    key={tool}
-                    className={`chip ${tools.includes(tool) ? "chip-active" : ""}`}
-                    aria-pressed={tools.includes(tool)}
-                    onClick={() => toggleTool(tool)}
-                  >
-                    {tool}
-                  </button>
-                )
-              )}
+              {[
+                "Oven",
+                "Air fryer",
+                "Stovetop",
+                "Microwave",
+                "Blender",
+                "Food processor",
+              ].map((tool) => (
+                <button
+                  type="button"
+                  key={tool}
+                  className={`chip ${
+                    tools.includes(tool) ? "chip-active" : ""
+                  }`}
+                  aria-pressed={tools.includes(tool)}
+                  onClick={() => toggleTool(tool)}
+                >
+                  {tool}
+                </button>
+              ))}
             </div>
           </div>
         </section>
@@ -287,6 +296,7 @@ export default function SearchPage() {
               <h2>Describe your meal</h2>
             </div>
           </div>
+
           <label className="sr-only" htmlFor="meal-description">
             Describe your ideal meal
           </label>
@@ -300,7 +310,10 @@ export default function SearchPage() {
         </section>
 
         <div className="form-actions full-width">
-          <button type="submit" className="button button-primary button-large">
+          <button
+            type="submit"
+            className="button button-primary button-large"
+          >
             Search recipes →
           </button>
           <button
@@ -312,53 +325,6 @@ export default function SearchPage() {
           </button>
         </div>
       </form>
-
-
-{/*TO-DO!!! The site should display results on a different page, this is just a place*/
-/*Also, each recipe card should be a link/expand into it's own card page/display...*/
-/*---------------------------------------------------*/}
-
-      {searched && (
-        <section className="section-block results-section">see where inspiration takes you
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">YOUR INSPIRATION</span>
-              <h2>
-                {mode === "generate"
-                  ? "Recipe ideas for you"
-                  : mode === "surprise"
-                    ? "A little surprise"
-                    : "Recipes to explore"}
-              </h2>
-            </div>
-            <span className="count-badge">
-              {sampleResults.length} examples
-            </span>
-          </div>
-
-          <p className="muted">
-            Demo results using your current selections: {ingredients.length}{" "}
-            ingredients, up to {maxTime} minutes, {servings || "2"} servings.
-            {mealDescription ? ` Your meal idea: ${mealDescription}` : ""}
-          </p>
-
-          <div className="recipe-grid">
-            {sampleResults.map((recipe, index) => (
-              <article className="panel recipe-card" key={recipe.name}>
-                <div className={`recipe-art recipe-art-${index + 1}`}>
-                  {/*The recipe-art span should change color based on the quanity of the match */}
-                  <span>{recipe.match}</span>
-                </div>
-                <div className="recipe-card-body">
-                  <h3>{recipe.name}</h3>
-                  <p>{recipe.description}</p>
-                  <span className="recipe-meta">◷ {recipe.time}</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

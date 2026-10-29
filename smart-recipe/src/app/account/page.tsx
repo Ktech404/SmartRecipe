@@ -89,6 +89,33 @@ export default function AccountPage() {
     setMessage("Profile changes updated in this demo.");
   }
 
+const [newAllergy, setNewAllergy] = useState("");
+
+function addAllergy() {
+  const ingredient = newAllergy.trim();
+
+  if (!ingredient) return;
+
+  // Avoids duplicate entries (case-insensitive).
+  if (
+    allergies.some(
+      (allergy) => allergy.toLowerCase() === ingredient.toLowerCase()
+    )
+  ) {
+    setNewAllergy("");
+    return;
+  }
+
+  setAllergies((current) => [...current, ingredient]);
+  setNewAllergy("");
+}
+
+function removeAllergy(ingredient: string) {
+  setAllergies((current) =>
+    current.filter((allergy) => allergy !== ingredient)
+  );
+}
+
   return (
     <div className="page-container">
       <div className="page-heading">
@@ -163,7 +190,7 @@ export default function AccountPage() {
                   <strong className="detail-email">{email}</strong>
                 </div>
                 <div className="detail-row">
-                    {/*will add option to update password once auth handling is settled. */}
+                    {/*will add option to change/reset password once auth handling is settled. */}
                   <span>Password</span>
                   <strong>••••••••</strong>
                 </div>
@@ -300,31 +327,57 @@ export default function AccountPage() {
             <p className="muted">
               Record ingredients that recipes should avoid.
             </p>
-            {/*TODO - user's should be able to enter ingredients not listed to avoid */}
-            <div className="preference-options">
-              {[
-                "Peanuts",
-                "Tree nuts",
-                "Milk",
-                "Eggs",
-                "Wheat",
-                "Soy",
-                "Fish",
-                "Shellfish",
-                "Sesame",
-              ].map((option) => (
-                <label className="check-option" key={option}>
-                  <input
-                    type="checkbox"
-                    checked={allergies.includes(option)}
-                    onChange={() =>
-                      toggleOption(option, allergies, setAllergies)
-                    }
-                  />
-                  <span>{option}</span>
+            
+            <div className="allergy-input-group">
+            <form
+                className="allergy-entry"
+                onSubmit={(event) => {
+                event.preventDefault();
+                addAllergy();
+                }}
+            >
+                <label className="sr-only" htmlFor="new-allergy">
+                Ingredient to avoid
                 </label>
-              ))}
+                <input
+                id="new-allergy"
+                type="text"
+                value={newAllergy}
+                onChange={(event) => setNewAllergy(event.target.value)}
+                placeholder="Enter an ingredient, e.g. mustard"
+                />
+                <button
+                type="submit"
+                className="button button-primary"
+                disabled={!newAllergy.trim()}
+                >
+                + Add
+                </button>
+            </form>
+
+            <div className="preference-options">
+                {allergies.map((ingredient) => (
+                <div className="check-option" key={ingredient}>
+                    <span>{ingredient}</span>
+                    <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Remove ${ingredient} from ingredients to avoid`}
+                    onClick={() => removeAllergy(ingredient)}
+                    >
+                    ×
+                    </button>
+                </div>
+                ))}
+
+                {allergies.length === 0 && (
+                <p className="muted">
+                    No ingredients added yet.
+                </p>
+                )}
             </div>
+            </div>
+
 
             <p className="helper-text">
              {/*keep in mind all these preferences should be stored in the database+used for searching. right now they're just preferences stored in page states */}

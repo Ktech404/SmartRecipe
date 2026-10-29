@@ -1242,12 +1242,52 @@ label,
   font-size: 0.82rem;
 }
 
-.preference-options {
+
+.allergy-input-group {
+  display: grid;
+  gap: 16px;
+}
+
+.allergy-entry {
+  display: flex;
+  gap: 10px;
+}
+
+.allergy-entry input {
+  flex: 1;
+  min-width: 0;
+}
+
+.allergy-entry .button {
+  flex-shrink: 0;
+}
+
+.allergy-input-group .preference-options {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 16px;
 }
+
+.allergy-input-group .check-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-soft);
+}
+
+@media (max-width: 480px) {
+  .allergy-entry {
+    flex-direction: column;
+  }
+
+  .allergy-entry .button {
+    width: 100%;
+  }
+}
+
 
 .check-option {
   display: inline-flex;
@@ -1294,6 +1334,91 @@ label,
 .account-save-row p {
   margin: 0;
   font-size: 0.78rem;
+}
+
+/*Recipe page*/
+
+
+.recipe-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  align-items: start;
+  gap: 24px;
+  margin: 24px 0;
+}
+
+.recipe-detail-image {
+  position: relative;
+  width: 100%;
+  min-height: 360px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.recipe-ingredients,
+.recipe-instructions {
+  padding: 24px;
+}
+
+.recipe-ingredients ul {
+  padding: 0;
+  list-style: none;
+}
+
+.recipe-ingredients li {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.recipe-ingredients li strong {
+  text-align: right;
+}
+
+.recipe-instructions {
+  margin-top: 24px;
+}
+
+.recipe-instructions ol {
+  padding: 0;
+  list-style: none;
+}
+
+.recipe-instructions li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.recipe-instructions li p {
+  margin: 0;
+}
+
+.instruction-number {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-tint);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+@media (max-width: 800px) {
+  .recipe-detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .recipe-detail-image {
+    min-height: 260px;
+  }
 }
 
 /* Responsive layouts */
