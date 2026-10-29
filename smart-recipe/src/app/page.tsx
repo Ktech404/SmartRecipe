@@ -49,7 +49,6 @@ export default function HomePage() {
         <div className="hero-logo" aria-hidden="true">
           <span>SR</span>
         </div>
-        
 
         <Link href="/search" className="button button-primary">
           Start searching <span aria-hidden="true">→</span>
