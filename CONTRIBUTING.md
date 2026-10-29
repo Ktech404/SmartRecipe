@@ -14,9 +14,9 @@ This page covers how we work in the repo so `main` stays stable and nobody is bl
 
 ## Branch Naming
 
-Create one branch per task, off the latest `main`, using `type/short-description` in lowercase with hyphens.
+Create one branch per task, off the latest `main`, using `type/KEY-number-short-description` in lowercase with hyphens.
 
-Example: `feature/recipe-generation`
+Example: `feature/SCRUM-14-recipe-generation`
 
 Common types: `feature/`, `fix/`, `docs/`, `setup/`.
 
@@ -38,7 +38,7 @@ Common types: `feature/`, `fix/`, `docs/`, `setup/`.
 
 ## Jira
 
-Jira tasks start next week. Once Jira is set up, each branch and PR should map to one ticket.
+Every branch and PR maps to one Jira ticket in the `SCRUM` project. Put the ticket key in the branch name and the PR title, for example `SCRUM-12: Add search request and response models`, so Jira links them automatically.
 
 ## Questions
 
