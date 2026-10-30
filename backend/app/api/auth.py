@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_session
 from app.db.models import User
-from app.schemas.auth import RegisterRequest, UserResponse
-from app.security import password_hasher
+from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.security import create_access_token, dummy_hash, password_hasher, verify_password
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -26,3 +26,15 @@ def register(payload: RegisterRequest, session: Session = Depends(get_session)):
         raise HTTPException(500, "Registration could not be completed") from None
     session.refresh(user)
     return user
+
+
+@router.post("/login", response_model=TokenResponse)
+def login(payload: LoginRequest, session: Session = Depends(get_session)):
+    user = session.scalar(select(User).where(User.username == payload.username))
+    valid = verify_password(payload.password.get_secret_value(),
+                            user.password_hash if user else dummy_hash)
+    if not user or not valid:
+        raise HTTPException(401, "Invalid username or password",
+                            headers={"WWW-Authenticate": "Bearer"})
+    token, lifetime = create_access_token(user.user_id)
+    return TokenResponse(access_token=token, expires_in=lifetime)
