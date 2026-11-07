@@ -4,9 +4,11 @@ from fastapi.responses import JSONResponse
 
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
+from app.security import token_settings
 
 
 def create_app() -> FastAPI:
+    token_settings()
     app = FastAPI(
         title="SmartRecipe API",
         description="Backend API for the SmartRecipe application.",
