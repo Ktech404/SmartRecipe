@@ -3,13 +3,18 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_session
+from app.api.dependencies import get_current_user, get_session
 from app.db.models import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.security import create_access_token, dummy_hash, password_hasher, verify_password
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.get("/me", response_model=UserResponse)
+def profile(user: User = Depends(get_current_user)):
+    return user
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
