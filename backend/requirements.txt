@@ -3,3 +3,4 @@ alembic
 psycopg[binary]
 python-dotenv
 pytest
+pydantic>=2
