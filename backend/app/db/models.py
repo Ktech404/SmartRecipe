@@ -84,9 +84,11 @@ class Recipe(Base):
     __tablename__ = "recipe"
     recipe_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     title: Mapped[str] = mapped_column(Text)
-    instructions: Mapped[str] = mapped_column(Text)
+    instructions: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
     source_url: Mapped[str | None] = mapped_column(Text, unique=True)
+    source_name: Mapped[str | None] = mapped_column(Text)
+    content_hash: Mapped[str | None] = mapped_column(Text, unique=True)
     generated_tag: Mapped[bool] = mapped_column(Boolean, server_default="false")
     total_minutes: Mapped[int | None] = mapped_column(Integer)
     servings: Mapped[int | None] = mapped_column(Integer)
