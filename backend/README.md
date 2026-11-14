@@ -42,8 +42,12 @@ From `backend`, after configuring `.env`:
 .venv/Scripts/python -m uvicorn app.main:app --reload
 ```
 
-Seeding is optional and idempotent. Schema changes remain managed by Alembic;
-the application does not create tables automatically.
+Seeding is optional and idempotent. It loads the ingredient vocabulary from
+`backend/seed/ingredients.csv` and `backend/seed/ingredient_synonyms.csv`, plus the
+dietary and cuisine preferences defined in `scripts/seed.py`. To change the
+vocabulary, edit the CSV files and run the seed again; existing rows are not
+overwritten or deleted. Schema changes remain managed by Alembic; the application
+does not create tables automatically.
 
 Health: <http://127.0.0.1:8000/health>. Interactive documentation:
 <http://127.0.0.1:8000/docs> and <http://127.0.0.1:8000/redoc>.
