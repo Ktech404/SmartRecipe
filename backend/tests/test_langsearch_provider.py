@@ -62,7 +62,7 @@ def test_sends_expected_request():
     assert url == langsearch.API_URL
     assert headers["Authorization"] == "Bearer test-key"
     assert body["query"] == "recipe with garlic"
-    assert body["count"] == 7
+    assert body["count"] == 14  # limit 7, asked for twice as many (overfetch)
     assert body["contents"] == {"text": {"maxCharacters": 2000}}
     assert timeout == 12
 
@@ -71,6 +71,26 @@ def test_count_is_capped_at_50():
     post = FakePost(_payload([]))
     _provider(post).search(RecipeSearchQuery(ingredients=("a",), limit=500))
     assert post.calls[0][2]["count"] == 50
+
+
+def test_overfetch_can_be_turned_off():
+    post = FakePost(_payload([]))
+    _provider(post, overfetch=1).search(RecipeSearchQuery(ingredients=("a",), limit=10))
+    assert post.calls[0][2]["count"] == 10
+
+
+def test_translated_copies_are_dropped_and_english_kept():
+    pages = [
+        _page(name="Pl", url="https://www.umami.recipes/pl/recipe/abc"),
+        _page(name="Zh", url="https://www.umami.recipes/zh-Hans/recipe/abc"),
+        _page(name="En", url="https://www.umami.recipes/recipe/abc"),
+        _page(name="Other", url="https://site.com/recipes/plan-ahead-pasta"),
+        _page(name="Region", url="https://site.com/us/recipe/x"),
+    ]
+    results = _provider(FakePost(_payload(pages))).search(
+        RecipeSearchQuery(ingredients=("a",))
+    )
+    assert [r.title for r in results] == ["En", "Other", "Region"]
 
 
 def test_maps_pages_to_raw_recipes():

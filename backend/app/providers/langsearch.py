@@ -42,6 +42,16 @@ MAX_COUNT = 50  # LangSearch accepts 1-50 results per search
 # Pages that are archive copies, not the original recipe page.
 DEFAULT_EXCLUDED_DOMAINS = ("web.archive.org",)
 
+# Some sites publish the same recipe once per language under a language prefix
+# (umami.recipes/pl/recipe/abc, /sv/recipe/abc, ...). The first live test returned
+# 10 results that were only 3 recipes, because of this. Our app is English-only,
+# so any URL whose first path segment is one of these language codes is dropped
+# and the unprefixed (English) copy is kept.
+_NON_ENGLISH_PREFIXES = frozenset(
+    """ar bg cs da de el es et fi fr he hi hr hu it ja ko lt lv nb nl no pl pt ro
+    ru sk sl sv th tr vi zh zh-hans zh-hant zh-cn zh-tw pt-br""".split()
+)
+
 # post(url, headers, body, timeout) -> parsed JSON. Raises a ProviderError subclass.
 PostFunction = Callable[[str, dict[str, str], dict, float], dict]
 
@@ -82,6 +92,13 @@ def _site_name(url: str) -> str | None:
     return host[4:] if host.startswith("www.") else host
 
 
+def _is_localized_copy(url: str) -> bool:
+    """True for URLs like https://site.com/pl/recipe/abc (a translated copy)."""
+    path = urlparse(url).path.lstrip("/")
+    first, _, rest = path.partition("/")
+    return bool(rest) and first.lower() in _NON_ENGLISH_PREFIXES
+
+
 def build_query_text(query: RecipeSearchQuery) -> str:
     """Turn the structured query into the plain-text search LangSearch expects."""
     parts = ["recipe with " + " ".join(query.ingredients)] if query.ingredients else ["recipe"]
@@ -100,6 +117,7 @@ class LangSearchProvider(RecipeSearchProvider):
         timeout: float = 30.0,
         max_chars: int = 3000,
         excluded_domains: tuple[str, ...] = DEFAULT_EXCLUDED_DOMAINS,
+        overfetch: int = 2,
         post: PostFunction = _post_json,
     ) -> None:
         if not api_key:
@@ -108,6 +126,10 @@ class LangSearchProvider(RecipeSearchProvider):
         self._timeout = timeout
         self._max_chars = max_chars
         self._excluded = {d.lower() for d in excluded_domains}
+        # We drop non-recipes' duplicates and translated copies after the search,
+        # so ask for more than the caller wants and trim to the limit afterwards.
+        # Tokens are not our constraint (see the spike), so this is cheap.
+        self._overfetch = max(1, overfetch)
         self._post = post
         self.tokens_used = 0  # running total for this object, for logging
 
@@ -121,7 +143,7 @@ class LangSearchProvider(RecipeSearchProvider):
     def search(self, query: RecipeSearchQuery) -> list[RawRecipe]:
         body = {
             "query": build_query_text(query),
-            "count": max(1, min(query.limit, MAX_COUNT)),
+            "count": max(1, min(query.limit * self._overfetch, MAX_COUNT)),
             "freshness": "noLimit",
             # Ask for page text; without this we only get a short snippet.
             "contents": {"text": {"maxCharacters": self._max_chars}},
@@ -152,7 +174,7 @@ class LangSearchProvider(RecipeSearchProvider):
             site = _site_name(url)
             if not url or not title or not text or site is None:
                 continue
-            if site in self._excluded:
+            if site in self._excluded or _is_localized_copy(url):
                 continue
             recipes.append(
                 RawRecipe(source_url=url, title=title, source_name=site, page_text=text)
