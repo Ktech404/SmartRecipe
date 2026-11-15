@@ -24,6 +24,13 @@ def test_trailing_slash_dropped_but_root_kept():
     assert normalize_url("https://example.com") == "https://example.com/"
 
 
+def test_comment_links_are_the_same_page():
+    base = "https://blog.example.com/2009/12/post.html"
+    a = normalize_url(base + "?showComment=1262245863035")
+    b = normalize_url(base + "?replytocom=801")
+    assert a == b == normalize_url(base)
+
+
 def test_same_page_different_forms_match():
     a = normalize_url("http://www.example.com/pasta/?utm_medium=email")
     b = normalize_url("https://example.com/pasta#top")

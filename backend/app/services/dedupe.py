@@ -24,6 +24,8 @@ T = TypeVar("T")
 _TRACKING_PARAMS = {
     "fbclid", "gclid", "msclkid", "mc_cid", "mc_eid", "igshid", "ref",
     "ref_src", "source", "campaign", "cmp", "pin_unauth",
+    # Blog comment links (Blogger, WordPress): same post, different anchor.
+    "showcomment", "replytocom",
 }
 _TRACKING_PREFIXES = ("utm_",)
 
