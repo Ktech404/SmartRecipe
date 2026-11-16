@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
+from app.api.recipes import router as recipes_router
 from app.security import token_settings
 
 
@@ -16,6 +17,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(recipes_router)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request, exc):

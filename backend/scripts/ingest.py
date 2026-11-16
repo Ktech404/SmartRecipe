@@ -70,6 +70,10 @@ def main() -> None:
     cli.add_argument("--allow-unrecognized", type=int, default=0,
                      help="keep recipes with up to this many unrecognized ingredient lines")
     cli.add_argument("--parse-delay", type=float, default=5.0, help="seconds between Gemini calls")
+    cli.add_argument("--prefilter", action="store_true",
+                     help="skip pages that cannot be a recipe before calling Gemini (saves quota)")
+    cli.add_argument("--workers", type=int, default=1,
+                     help="parse this many pages at once (faster, but reaches rate limits sooner)")
     args = cli.parse_args()
 
     texts = list(args.queries)
@@ -101,6 +105,8 @@ def main() -> None:
             max_unrecognized=args.allow_unrecognized,
             dry_run=args.dry_run,
             parse_delay=args.parse_delay,
+            prefilter=args.prefilter,
+            workers=args.workers,
             progress=lambda message: print(message, flush=True),
         )
         report = ingestor.run(queries, target=args.target, max_searches=args.max_searches)

@@ -41,6 +41,8 @@ from app.services.matching import (
     IngredientGraph,
     IngredientNode,
     MatchConfig,
+    BEST,
+    PARTIAL,
     OwnedMatcher,
     RecipeLine,
     RecipeMatch,
@@ -68,6 +70,9 @@ class ResolvedIngredients:
 class StoredSearchResult:
     results: list[RecipeResult]
     total: int  # matching recipes before limit/offset
+    # How many of them are in the best or partial tier, across all pages. The
+    # search endpoint uses this to decide whether the stored results are "thin".
+    strong: int = 0
 
 
 def load_graph(session: Session) -> IngredientGraph:
@@ -262,4 +267,5 @@ def search_stored_recipes(
     return StoredSearchResult(
         results=[_to_result(recipes[recipe_id], match) for recipe_id, match in page],
         total=len(scored),
+        strong=sum(1 for _, match in scored if match.tier in (BEST, PARTIAL)),
     )

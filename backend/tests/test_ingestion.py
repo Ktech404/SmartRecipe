@@ -24,12 +24,12 @@ LOOKUP = build_lookup(["garlic", "pasta", "salt", "rice", "onion"], {})
 QUERY = RecipeSearchQuery(ingredients=("garlic",))
 
 
-def raw(marker="A", url=None, title=None, site="example.com"):
+def raw(marker="A", url=None, title=None, site="example.com", text=None):
     return RawRecipe(
         source_url=url or f"https://{site}/{marker}",
         title=title or f"Recipe {marker}",
         source_name=site,
-        page_text=f"PAGE_{marker}",
+        page_text=text if text is not None else f"PAGE_{marker}",
     )
 
 
@@ -294,3 +294,72 @@ def test_ctrl_c_ends_the_run_and_returns_the_report():
     ingestor, _, _, _ = build(Interrupted(), {})
     report = ingestor.run([QUERY, QUERY])
     assert "Ctrl+C" in report.stopped_reason
+
+
+# ---- pre-filter and parallel parsing ---------------------------------------
+
+
+def test_page_without_ingredients_is_skipped_before_gemini_when_prefiltering():
+    ingestor, repo, gen, _ = build(
+        ScriptedProvider([raw("A", text="PAGE_A just a story about my week")]), {"PAGE_A": good()}, prefilter=True
+    )
+    report = ingestor.run([QUERY])
+    assert gen.calls == 0 and report.prefiltered == 1 and not repo.saved
+
+
+def test_listing_and_tag_pages_are_skipped_when_prefiltering():
+    pages = [
+        raw("A", title="25 easy pasta recipes", text="PAGE_A Ingredients"),
+        raw("B", url="https://example.com/category/pasta", text="PAGE_B Ingredients"),
+    ]
+    ingestor, repo, gen, _ = build(ScriptedProvider(pages), {}, prefilter=True)
+    report = ingestor.run([QUERY])
+    assert gen.calls == 0 and report.prefiltered == 2
+
+
+def test_page_with_ingredients_still_reaches_gemini_when_prefiltering():
+    ingestor, repo, gen, _ = build(
+        ScriptedProvider([raw("A", text="PAGE_A Ingredients: garlic")]), {"PAGE_A": good()}, prefilter=True
+    )
+    report = ingestor.run([QUERY])
+    assert gen.calls == 1 and report.stored == 1 and report.prefiltered == 0
+
+
+def test_prefilter_is_off_by_default():
+    ingestor, repo, gen, _ = build(ScriptedProvider([raw("A", text="PAGE_A no list")]), {"PAGE_A": good()})
+    ingestor.run([QUERY])
+    assert gen.calls == 1
+
+
+def test_parallel_parsing_stores_every_page():
+    pages = [raw(m, title=f"Recipe {m}") for m in "ABCD"]
+    answers = {f"PAGE_{m}": good(title=f"Garlic Pasta {m}") for m in "ABCD"}
+    ingestor, repo, gen, _ = build(ScriptedProvider(pages), answers, workers=2)
+    report = ingestor.run([QUERY])
+    assert report.stored == 4 and gen.calls == 4
+    assert sorted(r.title for r in repo.saved) == [f"Garlic Pasta {m}" for m in "ABCD"]
+
+
+def test_parallel_parsing_waits_once_per_batch():
+    pages = [raw(m, title=f"Recipe {m}") for m in "ABCD"]
+    answers = {f"PAGE_{m}": good(title=f"Garlic Pasta {m}") for m in "ABCD"}
+    ingestor, _, _, sleeps = build(ScriptedProvider(pages), answers, workers=2, parse_delay=5.0)
+    ingestor.run([QUERY])
+    assert sleeps.count(5.0) == 2
+
+
+def test_parallel_parsing_stops_after_the_batch_that_reaches_the_target():
+    pages = [raw(m, title=f"Recipe {m}") for m in "ABCD"]
+    answers = {f"PAGE_{m}": good(title=f"Garlic Pasta {m}") for m in "ABCD"}
+    ingestor, repo, gen, _ = build(ScriptedProvider(pages), answers, workers=2)
+    report = ingestor.run([QUERY], target=2)
+    assert report.stored == 2 and gen.calls == 2
+
+
+def test_parallel_rate_limit_stops_the_run():
+    pages = [raw(m, title=f"Recipe {m}") for m in "ABCD"]
+    answers = {"PAGE_A": good(title="A"), "PAGE_B": ParserRateLimited("slow down"),
+               "PAGE_C": good(title="C"), "PAGE_D": good(title="D")}
+    ingestor, repo, gen, _ = build(ScriptedProvider(pages), answers, workers=2)
+    report = ingestor.run([QUERY])
+    assert report.stopped_reason and gen.calls == 2
