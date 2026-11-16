@@ -4,6 +4,7 @@ psycopg[binary]
 python-dotenv
 pytest
 
+google-genai==2.34.0
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 pydantic>=2

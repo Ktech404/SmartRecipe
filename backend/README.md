@@ -27,6 +27,8 @@ and `cp .env.example .env` instead.
 | `JWT_SECRET_KEY` | Required random signing secret, at least 32 bytes; no default |
 | `LANGSEARCH_API_KEY` | API key for LangSearch recipe search (from the LangSearch dashboard) |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime, 1–1440 minutes; default 30 |
+| `GEMINI_API_KEY` | API key for Gemini recipe parsing (Google AI Studio) |
+| `GEMINI_MODEL` | Optional. Gemini model name; default `gemini-3.5-flash-lite` |
 
 The example database credentials are for the local Docker service only.
 Use independent credentials and HTTPS for deployed services. Do not log request
