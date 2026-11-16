@@ -23,7 +23,9 @@ class Ingredient(Base):
     ingredient_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(CITEXT, unique=True)
     category: Mapped[str | None] = mapped_column(Text)
-    is_staple: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    is_staple:  Mapped[bool] = mapped_column(Boolean, server_default="false")
+    parent_ingredient_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ingredient.ingredient_id", ondelete="SET NULL"), index=True)
 
 
 class IngredientSynonym(Base):
@@ -109,6 +111,7 @@ class RecipeIngredient(Base):
     quantity: Mapped[float | None] = mapped_column(Numeric(10, 2))
     unit: Mapped[str | None] = mapped_column(Text)
     is_optional: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    raw_text: Mapped[str | None] = mapped_column(Text)
 
 
 class RecipeDiet(Base):
@@ -144,3 +147,27 @@ class ShoppingListItem(Base):
     source_recipe_id: Mapped[int | None] = mapped_column(
         ForeignKey("recipe.recipe_id", ondelete="SET NULL"))
     status: Mapped[str] = mapped_column(Text, server_default="pending")
+
+
+class AllergenGroup(Base):
+    __tablename__ = "allergen_group"
+    allergen_group_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(CITEXT, unique=True)
+
+
+class IngredientAllergenGroup(Base):
+    __tablename__ = "ingredient_allergen_group"
+    ingredient_id: Mapped[int] = mapped_column(
+        ForeignKey("ingredient.ingredient_id", ondelete="CASCADE"), primary_key=True)
+    allergen_group_id: Mapped[int] = mapped_column(
+        ForeignKey("allergen_group.allergen_group_id", ondelete="CASCADE"),
+        primary_key=True)
+
+
+class UserAllergenGroup(Base):
+    __tablename__ = "user_allergen_group"
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
+    allergen_group_id: Mapped[int] = mapped_column(
+        ForeignKey("allergen_group.allergen_group_id", ondelete="CASCADE"),
+        primary_key=True)
