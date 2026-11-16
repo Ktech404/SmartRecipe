@@ -25,6 +25,7 @@ and `cp .env.example .env` instead.
 | `DATABASE_URL` | Development PostgreSQL SQLAlchemy URL, using `postgresql+psycopg` |
 | `TEST_DATABASE_URL` | Disposable PostgreSQL database; name must end in `_test` and differ from development |
 | `JWT_SECRET_KEY` | Required random signing secret, at least 32 bytes; no default |
+| `LANGSEARCH_API_KEY` | API key for LangSearch recipe search (from the LangSearch dashboard) |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime, 1–1440 minutes; default 30 |
 
 The example database credentials are for the local Docker service only.
