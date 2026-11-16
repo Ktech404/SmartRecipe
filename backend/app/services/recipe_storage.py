@@ -47,6 +47,7 @@ class IngredientEntry:
     quantity: float | None = None
     unit: str | None = None
     is_optional: bool = False
+    raw_text: str | None = None  # the original line, e.g. "2 cloves garlic, minced"
 
 
 @dataclass(frozen=True)
@@ -128,6 +129,7 @@ def store_recipe(session: Session, recipe: RecipeToStore) -> StoreResult:
                     quantity=e.quantity,
                     unit=e.unit,
                     is_optional=e.is_optional,
+                    raw_text=e.raw_text,
                 )
                 for e in recipe.ingredients
             )
