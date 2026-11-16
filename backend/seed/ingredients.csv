@@ -1,0 +1,321 @@
+name,category,is_staple
+onion,vegetable,false
+red onion,vegetable,false
+green onion,vegetable,false
+shallot,vegetable,false
+garlic,vegetable,false
+ginger,vegetable,false
+carrot,vegetable,false
+celery,vegetable,false
+potato,vegetable,false
+sweet potato,vegetable,false
+tomato,vegetable,false
+cherry tomato,vegetable,false
+sun dried tomato,vegetable,false
+cucumber,vegetable,false
+bell pepper,vegetable,false
+jalapeno pepper,vegetable,false
+chili pepper,vegetable,false
+roasted red pepper,vegetable,false
+broccoli,vegetable,false
+cauliflower,vegetable,false
+spinach,vegetable,false
+kale,vegetable,false
+lettuce,vegetable,false
+cabbage,vegetable,false
+zucchini,vegetable,false
+eggplant,vegetable,false
+mushroom,vegetable,false
+corn,vegetable,false
+green bean,vegetable,false
+pea,vegetable,false
+snow pea,vegetable,false
+asparagus,vegetable,false
+brussels sprout,vegetable,false
+beet,vegetable,false
+radish,vegetable,false
+leek,vegetable,false
+squash,vegetable,false
+butternut squash,vegetable,false
+pumpkin,vegetable,false
+avocado,vegetable,false
+artichoke,vegetable,false
+bok choy,vegetable,false
+arugula,vegetable,false
+fennel,vegetable,false
+turnip,vegetable,false
+parsnip,vegetable,false
+bean sprout,vegetable,false
+chard,vegetable,false
+olive,vegetable,false
+pickle,vegetable,false
+lemon,fruit,false
+lime,fruit,false
+orange,fruit,false
+apple,fruit,false
+banana,fruit,false
+strawberry,fruit,false
+blueberry,fruit,false
+raspberry,fruit,false
+grape,fruit,false
+pineapple,fruit,false
+mango,fruit,false
+peach,fruit,false
+pear,fruit,false
+cherry,fruit,false
+watermelon,fruit,false
+cranberry,fruit,false
+coconut,fruit,false
+date,fruit,false
+raisin,fruit,false
+fig,fruit,false
+pomegranate,fruit,false
+grapefruit,fruit,false
+kiwi,fruit,false
+plum,fruit,false
+apricot,fruit,false
+chicken breast,meat,false
+chicken thigh,meat,false
+chicken wing,meat,false
+whole chicken,meat,false
+ground chicken,meat,false
+beef,meat,false
+ground beef,meat,false
+pork chop,meat,false
+ground pork,meat,false
+pork tenderloin,meat,false
+bacon,meat,false
+ham,meat,false
+sausage,meat,false
+italian sausage,meat,false
+chorizo,meat,false
+turkey,meat,false
+ground turkey,meat,false
+lamb,meat,false
+ground lamb,meat,false
+hot dog,meat,false
+pepperoni,meat,false
+prosciutto,meat,false
+duck,meat,false
+egg,dairy,false
+tofu,meat,false
+tempeh,meat,false
+salmon,seafood,false
+tuna,seafood,false
+shrimp,seafood,false
+cod,seafood,false
+tilapia,seafood,false
+crab,seafood,false
+lobster,seafood,false
+scallop,seafood,false
+mussel,seafood,false
+clam,seafood,false
+anchovy,seafood,false
+sardine,seafood,false
+halibut,seafood,false
+trout,seafood,false
+squid,seafood,false
+milk,dairy,false
+butter,dairy,false
+heavy cream,dairy,false
+sour cream,dairy,false
+cream cheese,dairy,false
+yogurt,dairy,false
+greek yogurt,dairy,false
+cheddar cheese,dairy,false
+mozzarella cheese,dairy,false
+parmesan cheese,dairy,false
+feta cheese,dairy,false
+goat cheese,dairy,false
+swiss cheese,dairy,false
+ricotta cheese,dairy,false
+cottage cheese,dairy,false
+provolone cheese,dairy,false
+monterey jack cheese,dairy,false
+gouda cheese,dairy,false
+blue cheese,dairy,false
+buttermilk,dairy,false
+half and half,dairy,false
+whipped cream,dairy,false
+coconut milk,dairy,false
+coconut cream,dairy,false
+almond milk,dairy,false
+oat milk,dairy,false
+soy milk,dairy,false
+condensed milk,dairy,false
+evaporated milk,dairy,false
+ghee,dairy,false
+rice,grain,false
+brown rice,grain,false
+basmati rice,grain,false
+jasmine rice,grain,false
+arborio rice,grain,false
+wild rice,grain,false
+pasta,grain,false
+spaghetti,grain,false
+penne,grain,false
+macaroni,grain,false
+fettuccine,grain,false
+lasagna noodle,grain,false
+egg noodle,grain,false
+rice noodle,grain,false
+ramen noodle,grain,false
+orzo,grain,false
+quinoa,grain,false
+couscous,grain,false
+oat,grain,false
+bread,grain,false
+whole wheat bread,grain,false
+bagel,grain,false
+tortilla,grain,false
+corn tortilla,grain,false
+flour tortilla,grain,false
+pita bread,grain,false
+naan,grain,false
+hamburger bun,grain,false
+hot dog bun,grain,false
+breadcrumb,grain,false
+panko,grain,false
+cornmeal,grain,false
+polenta,grain,false
+barley,grain,false
+bulgur,grain,false
+farro,grain,false
+cracker,grain,false
+pizza dough,grain,false
+pie crust,grain,false
+puff pastry,grain,false
+black bean,legume,false
+kidney bean,legume,false
+pinto bean,legume,false
+chickpea,legume,false
+lentil,legume,false
+red lentil,legume,false
+white bean,legume,false
+cannellini bean,legume,false
+navy bean,legume,false
+lima bean,legume,false
+refried bean,legume,false
+split pea,legume,false
+edamame,legume,false
+almond,nut_seed,false
+walnut,nut_seed,false
+pecan,nut_seed,false
+cashew,nut_seed,false
+peanut,nut_seed,false
+pistachio,nut_seed,false
+pine nut,nut_seed,false
+hazelnut,nut_seed,false
+sesame seed,nut_seed,false
+sunflower seed,nut_seed,false
+pumpkin seed,nut_seed,false
+chia seed,nut_seed,false
+flaxseed,nut_seed,false
+peanut butter,nut_seed,false
+almond butter,nut_seed,false
+tahini,nut_seed,false
+basil,herb,false
+parsley,herb,false
+cilantro,herb,false
+thyme,herb,false
+rosemary,herb,false
+oregano,herb,false
+sage,herb,false
+mint,herb,false
+dill,herb,false
+chive,herb,false
+bay leaf,herb,false
+tarragon,herb,false
+lemongrass,herb,false
+marjoram,herb,false
+cumin,spice,false
+paprika,spice,false
+smoked paprika,spice,false
+chili powder,spice,false
+cayenne pepper,spice,false
+cinnamon,spice,false
+nutmeg,spice,false
+turmeric,spice,false
+coriander,spice,false
+curry powder,spice,false
+garam masala,spice,false
+garlic powder,spice,false
+onion powder,spice,false
+red pepper flake,spice,false
+clove,spice,false
+cardamom,spice,false
+allspice,spice,false
+italian seasoning,spice,false
+taco seasoning,spice,false
+cajun seasoning,spice,false
+chinese five spice,spice,false
+black pepper,spice,true
+white pepper,spice,false
+salt,spice,true
+sea salt,spice,true
+saffron,spice,false
+star anise,spice,false
+mustard seed,spice,false
+vanilla extract,spice,false
+soy sauce,condiment,false
+fish sauce,condiment,false
+oyster sauce,condiment,false
+hoisin sauce,condiment,false
+worcestershire sauce,condiment,false
+hot sauce,condiment,false
+sriracha,condiment,false
+ketchup,condiment,false
+mustard,condiment,false
+dijon mustard,condiment,false
+mayonnaise,condiment,false
+bbq sauce,condiment,false
+teriyaki sauce,condiment,false
+tomato sauce,condiment,false
+tomato paste,condiment,false
+crushed tomato,condiment,false
+marinara sauce,condiment,false
+salsa,condiment,false
+pesto,condiment,false
+hummus,condiment,false
+vinegar,condiment,false
+balsamic vinegar,condiment,false
+red wine vinegar,condiment,false
+apple cider vinegar,condiment,false
+rice vinegar,condiment,false
+miso paste,condiment,false
+curry paste,condiment,false
+harissa,condiment,false
+caper,condiment,false
+honey,condiment,false
+maple syrup,condiment,false
+molasses,condiment,false
+jam,condiment,false
+olive oil,oil,true
+vegetable oil,oil,true
+canola oil,oil,true
+coconut oil,oil,false
+sesame oil,oil,false
+avocado oil,oil,false
+all purpose flour,baking,false
+bread flour,baking,false
+whole wheat flour,baking,false
+almond flour,baking,false
+sugar,baking,false
+brown sugar,baking,false
+powdered sugar,baking,false
+baking soda,baking,false
+baking powder,baking,false
+yeast,baking,false
+cornstarch,baking,false
+cocoa powder,baking,false
+chocolate chip,baking,false
+dark chocolate,baking,false
+water,pantry,true
+chicken broth,pantry,false
+beef broth,pantry,false
+vegetable broth,pantry,false
+white wine,pantry,false
+red wine,pantry,false
+beer,pantry,false
+coffee,pantry,false
+nori,pantry,false
