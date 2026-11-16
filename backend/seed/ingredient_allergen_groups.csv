@@ -1,0 +1,104 @@
+ingredient,allergen_group
+milk,dairy
+butter,dairy
+heavy cream,dairy
+sour cream,dairy
+cream cheese,dairy
+yogurt,dairy
+greek yogurt,dairy
+cheddar cheese,dairy
+mozzarella cheese,dairy
+parmesan cheese,dairy
+feta cheese,dairy
+goat cheese,dairy
+swiss cheese,dairy
+ricotta cheese,dairy
+cottage cheese,dairy
+provolone cheese,dairy
+monterey jack cheese,dairy
+gouda cheese,dairy
+blue cheese,dairy
+buttermilk,dairy
+half and half,dairy
+whipped cream,dairy
+condensed milk,dairy
+evaporated milk,dairy
+ghee,dairy
+pesto,dairy
+egg,eggs
+mayonnaise,eggs
+egg noodle,eggs
+all purpose flour,gluten
+bread flour,gluten
+whole wheat flour,gluten
+pasta,gluten
+spaghetti,gluten
+penne,gluten
+macaroni,gluten
+fettuccine,gluten
+lasagna noodle,gluten
+egg noodle,gluten
+ramen noodle,gluten
+orzo,gluten
+couscous,gluten
+bread,gluten
+whole wheat bread,gluten
+bagel,gluten
+tortilla,gluten
+flour tortilla,gluten
+pita bread,gluten
+naan,gluten
+hamburger bun,gluten
+hot dog bun,gluten
+breadcrumb,gluten
+panko,gluten
+barley,gluten
+bulgur,gluten
+farro,gluten
+cracker,gluten
+pizza dough,gluten
+pie crust,gluten
+puff pastry,gluten
+soy sauce,gluten
+teriyaki sauce,gluten
+hoisin sauce,gluten
+beer,gluten
+almond,tree nuts
+walnut,tree nuts
+pecan,tree nuts
+cashew,tree nuts
+pistachio,tree nuts
+pine nut,tree nuts
+hazelnut,tree nuts
+almond butter,tree nuts
+almond flour,tree nuts
+almond milk,tree nuts
+pesto,tree nuts
+peanut,peanuts
+peanut butter,peanuts
+soy sauce,soy
+tofu,soy
+tempeh,soy
+edamame,soy
+miso paste,soy
+soy milk,soy
+teriyaki sauce,soy
+hoisin sauce,soy
+shrimp,shellfish
+crab,shellfish
+lobster,shellfish
+scallop,shellfish
+mussel,shellfish
+clam,shellfish
+squid,shellfish
+oyster sauce,shellfish
+salmon,fish
+tuna,fish
+cod,fish
+tilapia,fish
+halibut,fish
+trout,fish
+sardine,fish
+anchovy,fish
+fish sauce,fish
+worcestershire sauce,fish
