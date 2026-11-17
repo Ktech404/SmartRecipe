@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
 
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
@@ -26,6 +28,14 @@ def create_app() -> FastAPI:
                   for error in exc.errors()]
         return JSONResponse(status_code=422, content={"detail": errors})
 
+    # Allow requests from the Next.js frontend
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     return app
 
 

@@ -12,7 +12,8 @@ export const API_ENDPOINTS = {
   // Recipes
   SEARCH_RECIPES: "/recipes/search",
   GENERATE_RECIPE: "/recipes/generate",
-  RECIPE_DETAILS: (id: string) => `/recipes/${id}`,
+  RECIPE_DETAILS: (slug: string) => `/recipes/slug/${slug}`,
+  
 
   // Saved recipes
   SAVED_RECIPES: "/recipes/saved",

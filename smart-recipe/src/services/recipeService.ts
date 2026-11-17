@@ -32,11 +32,11 @@ export async function generateRecipe(
   );
 }
 
-export async function getRecipeById(
-  id: string
+export async function getRecipeBySlug(
+  slug: string
 ): Promise<Recipe> {
   return apiRequest<Recipe>(
-    API_ENDPOINTS.RECIPE_DETAILS(id)
+    API_ENDPOINTS.RECIPE_DETAILS(slug)
   );
 }
 
