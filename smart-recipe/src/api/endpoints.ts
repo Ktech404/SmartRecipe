@@ -22,4 +22,5 @@ export const API_ENDPOINTS = {
   // Shopping list
   SHOPPING_LIST: "/shopping-list",
   SHOPPING_LIST_ITEM: (id: string) => `/shopping-list/${id}`,
+
 };
