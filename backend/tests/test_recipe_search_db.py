@@ -18,11 +18,11 @@ from app.db.models import (
     UserRestricted,
 )
 from app.services.recipe_search import (
-    Restrictions,
     load_restrictions,
     resolve_ingredient_ids,
     search_stored_recipes,
 )
+from app.services.restrictions import Restrictions
 
 
 @pytest.fixture()
@@ -143,10 +143,10 @@ def test_hierarchy_owning_cheddar_covers_a_recipe_that_wants_cheese(session, kit
     assert r.tier.value == "best" and r.missing_ingredients == []
 
 
-def test_hierarchy_a_sibling_is_offered_as_a_substitute(session, kitchen):
+def test_hierarchy_a_sibling_is_offered_as_a_suggestion_but_does_not_cover_it(session, kitchen):
     make_recipe(session, kitchen, "Caprese Pasta", [("mozzarella cheese", 1, "cup"), ("pasta", 200, "g")])
     [r] = search_stored_recipes(session, owned(kitchen, "cheddar cheese", "pasta")).results
-    assert r.tier.value == "partial" and r.match_score == 0.75
+    assert r.tier.value == "partial" and r.match_score == 0.5
     [missing] = r.missing_ingredients
     assert missing.name == "mozzarella cheese" and missing.substitutes == ["cheddar cheese"]
 
@@ -180,14 +180,14 @@ def test_an_allergy_excludes_recipes_even_when_they_match_well(session, kitchen)
     make_recipe(session, kitchen, "Peanut Pasta", [("pasta", 200, "g"), ("peanut", 30, "g")])
     make_recipe(session, kitchen, "Plain Pasta", [("pasta", 200, "g"), ("garlic", 1, "clove")])
     mine = owned(kitchen, "pasta", "peanut", "garlic")
-    restrictions = Restrictions(ingredient_ids=frozenset({kitchen["peanut"]}))
+    restrictions = Restrictions(allergies=frozenset({kitchen["peanut"]}))
     assert titles(search_stored_recipes(session, mine, restrictions=restrictions)) == ["Plain Pasta"]
 
 
 def test_a_restricted_ingredient_also_excludes_what_is_below_it(session, kitchen):
     make_recipe(session, kitchen, "Cheddar Pasta", [("pasta", 200, "g"), ("cheddar cheese", 1, "cup")])
     make_recipe(session, kitchen, "Plain Pasta", [("pasta", 200, "g")])
-    restrictions = Restrictions(ingredient_ids=frozenset({kitchen["cheese"]}))
+    restrictions = Restrictions(allergies=frozenset({kitchen["cheese"]}))
     result = search_stored_recipes(session, owned(kitchen, "pasta"), restrictions=restrictions)
     assert titles(result) == ["Plain Pasta"]
 
@@ -200,7 +200,7 @@ def test_an_allergen_group_excludes_every_ingredient_in_it(session, kitchen):
     session.flush()
     make_recipe(session, kitchen, "Peanut Pasta", [("pasta", 200, "g"), ("peanut", 30, "g")])
     make_recipe(session, kitchen, "Plain Pasta", [("pasta", 200, "g")])
-    restrictions = Restrictions(allergen_group_ids=frozenset({group.allergen_group_id}))
+    restrictions = Restrictions(allergen_groups=frozenset({group.allergen_group_id}))
     result = search_stored_recipes(session, owned(kitchen, "pasta"), restrictions=restrictions)
     assert titles(result) == ["Plain Pasta"]
 
@@ -218,8 +218,55 @@ def test_load_restrictions_reads_the_users_allergies_and_groups(session, kitchen
     )
     session.flush()
     r = load_restrictions(session, user.user_id)
-    assert r.ingredient_ids == {kitchen["peanut"]}
-    assert r.allergen_group_ids == {group.allergen_group_id}
+    assert r.allergies == {kitchen["peanut"]}
+    assert r.blacklist == frozenset()
+    assert r.allergen_groups == {group.allergen_group_id}
+
+
+def test_load_restrictions_keeps_allergies_and_the_blacklist_apart(session, kitchen):
+    user = User(username="picky", email="picky@example.com", password_hash="x")
+    session.add(user)
+    session.flush()
+    session.add_all(
+        [
+            UserRestricted(user_id=user.user_id, ingredient_id=kitchen["peanut"], restriction_type="allergy"),
+            UserRestricted(user_id=user.user_id, ingredient_id=kitchen["basil"], restriction_type="blacklist"),
+        ]
+    )
+    session.flush()
+    r = load_restrictions(session, user.user_id)
+    assert r.allergies == {kitchen["peanut"]} and r.blacklist == {kitchen["basil"]}
+
+
+def test_an_allergy_to_a_specific_ingredient_blocks_a_recipe_that_only_says_the_general_one(session, kitchen):
+    make_recipe(session, kitchen, "Cheesy Pasta", [("pasta", 200, "g"), ("cheese", 1, "cup")])
+    make_recipe(session, kitchen, "Plain Pasta", [("pasta", 200, "g")])
+    mine = owned(kitchen, "pasta")
+    allergy = Restrictions(allergies=frozenset({kitchen["cheddar cheese"]}))
+    blacklist = Restrictions(blacklist=frozenset({kitchen["cheddar cheese"]}))
+    assert titles(search_stored_recipes(session, mine, restrictions=allergy)) == ["Plain Pasta"]
+    assert sorted(titles(search_stored_recipes(session, mine, restrictions=blacklist))) == [
+        "Cheesy Pasta", "Plain Pasta",
+    ]
+
+
+def test_very_weak_matches_are_not_returned(session, kitchen):
+    make_recipe(
+        session, kitchen, "Five Things",
+        [("tomato", 1, None), ("basil", 1, None), ("peanut", 1, None), ("cheese", 1, "cup"), ("pasta", 1, "g")],
+    )
+    assert search_stored_recipes(session, owned(kitchen, "pasta")).results == []  # 1 of 5 = 0.2
+
+
+def test_strong_counts_best_and_partial_matches_across_all_pages(session, kitchen):
+    for i in range(3):
+        make_recipe(session, kitchen, f"Pasta {i}", [("pasta", 100, "g"), ("garlic", 1, "clove")])
+    make_recipe(
+        session, kitchen, "Big Dinner",
+        [("tomato", 1, None), ("basil", 1, None), ("peanut", 1, None), ("pasta", 1, "g")],
+    )
+    result = search_stored_recipes(session, owned(kitchen, "pasta", "garlic"), limit=1)
+    assert result.total == 4 and result.strong == 3
 
 
 def test_pagination_returns_a_page_and_the_full_total(session, kitchen):

@@ -1,16 +1,22 @@
 """Search the stored recipes by the ingredients a user owns.  (SCRUM-34)
 
-This is the database half of matching. The scoring rules live in matching.py
-and need no database; this module:
+This is the database half of matching. The rules live in pure modules that need
+no database:
 
-1. turns ingredient names into ids (resolve_ingredient_ids),
-2. finds stored recipes that share at least one ingredient with the user,
-3. drops recipes that break the user's restrictions (allergies, blacklist and
-   allergen groups, including everything below a restricted ingredient),
-4. applies the time and tool filters,
-5. scores, tiers and ranks what is left, and
-6. returns one page of RecipeResult objects (the response model from
-   app/schemas/search.py) plus the total count.
+- matching.py       scores and tiers recipes (best / partial / low)
+- restrictions.py   removes recipes the user must not see (allergies, allergen
+                    groups, blacklist)
+- substitutes.py    suggests owned ingredients that could stand in for a missing one
+
+This module loads the data they need and puts the steps in order:
+
+1. turn ingredient names into ids (resolve_ingredient_ids),
+2. find stored recipes that share at least one ingredient with the user,
+   applying the time filter,
+3. apply the tool filter,
+4. drop recipes that break the user's restrictions, then score, tier and rank
+   what is left (rank_stored, no database), and
+5. return one page of RecipeResult objects (app/schemas/search.py) plus the total.
 
 The POST /recipes/search route (SCRUM-35) calls search_stored_recipes() first and
 adds live results when the stored ones are thin. Nothing here calls a network API.
@@ -19,9 +25,14 @@ Filters
 - max_minutes: recipes with no stored time are kept (unknown is not "too long").
 - tools: the tools the user HAS. A recipe is dropped if it needs a tool that is
   not in the list. Recipes that list no tools are kept. Empty list: no filter.
+
+Very weak matches
+- Recipes scoring below LOW_MIN_SCORE (one ingredient in four) are not returned:
+  a recipe that shares a single ingredient with a long list is just noise.
 """
 
-from collections.abc import Iterable, Sequence
+from collections import defaultdict
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from sqlalchemy import or_, select
@@ -38,26 +49,19 @@ from app.db.models import (
 from app.schemas.search import MatchTier, MissingIngredient, RecipeResult, Unit
 from app.services.ingredient_mapping import load_lookup_from_db
 from app.services.matching import (
-    IngredientGraph,
-    IngredientNode,
-    MatchConfig,
-    BEST,
-    PARTIAL,
-    OwnedMatcher,
+    BEST_MIN_SCORE,
+    PARTIAL_MIN_SCORE,
+    Candidate,
+    Match,
     RecipeLine,
-    RecipeMatch,
-    rank_key,
-    score_recipe,
+    ancestors,
+    rank_matches,
 )
 from app.services.normalization import resolve_ingredient
+from app.services.restrictions import Restrictions, filter_safe
+from app.services.substitutes import substitutes_for
 
-
-@dataclass(frozen=True)
-class Restrictions:
-    """What a user must never be shown."""
-
-    ingredient_ids: frozenset[int] = frozenset()  # allergies and blacklist
-    allergen_group_ids: frozenset[int] = frozenset()
+LOW_MIN_SCORE = 0.25  # below this a recipe is not worth showing
 
 
 @dataclass(frozen=True)
@@ -75,19 +79,65 @@ class StoredSearchResult:
     strong: int = 0
 
 
-def load_graph(session: Session) -> IngredientGraph:
+# --------------------------------------------------------------------------
+# Pure steps (no database)
+# --------------------------------------------------------------------------
+
+
+def related_ids(owned: Iterable[int], parents: Mapping[int, int | None]) -> set[int]:
+    """Every ingredient id that can earn credit for what the user owns.
+
+    That is the owned ingredient itself, anything more general (owning
+    "cheddar" covers a recipe that wants "cheese") and anything more specific
+    (owning "cheese" covers "cheddar"). Used to find recipes worth scoring.
+    """
+    owned = set(owned)
+    children: dict[int, set[int]] = defaultdict(set)
+    for child, parent in parents.items():
+        if parent is not None:
+            children[parent].add(child)
+
+    found = set(owned)
+    for ingredient_id in owned:
+        found |= ancestors(ingredient_id, parents)
+    stack = list(owned)
+    below: set[int] = set()
+    while stack:
+        for child in children.get(stack.pop(), ()):
+            if child not in below:
+                below.add(child)
+                stack.append(child)
+    return found | below
+
+
+def rank_stored(
+    candidates: Sequence[Candidate],
+    owned: Collection[int],
+    parents: Mapping[int, int | None],
+    restrictions: Restrictions = Restrictions(),
+    ingredient_groups: Mapping[int, Collection[int]] | None = None,
+    *,
+    min_score: float = LOW_MIN_SCORE,
+    best_min: float = BEST_MIN_SCORE,
+    partial_min: float = PARTIAL_MIN_SCORE,
+) -> list[Match]:
+    """Remove unsafe recipes, score the rest, drop very weak ones, best first."""
+    safe = filter_safe(candidates, restrictions, parents, ingredient_groups)
+    matches = rank_matches(safe, owned, parents, best_min=best_min, partial_min=partial_min)
+    return [m for m in matches if m.score >= min_score - 1e-9]
+
+
+# --------------------------------------------------------------------------
+# Loading
+# --------------------------------------------------------------------------
+
+
+def load_parents(session: Session) -> dict[int, int | None]:
+    """ingredient_id -> parent_ingredient_id for the whole vocabulary."""
     rows = session.execute(
-        select(
-            Ingredient.ingredient_id,
-            Ingredient.name,
-            Ingredient.parent_ingredient_id,
-            Ingredient.is_staple,
-        )
+        select(Ingredient.ingredient_id, Ingredient.parent_ingredient_id)
     ).all()
-    return IngredientGraph(
-        IngredientNode(r.ingredient_id, r.name, r.parent_ingredient_id, bool(r.is_staple))
-        for r in rows
-    )
+    return {r.ingredient_id: r.parent_ingredient_id for r in rows}
 
 
 def resolve_ingredient_ids(session: Session, names: Iterable[str]) -> ResolvedIngredients:
@@ -115,37 +165,36 @@ def resolve_ingredient_ids(session: Session, names: Iterable[str]) -> ResolvedIn
 
 
 def load_restrictions(session: Session, user_id: int) -> Restrictions:
-    ingredient_ids = session.execute(
-        select(UserRestricted.ingredient_id).where(UserRestricted.user_id == user_id)
-    ).scalars()
+    """The user's allergies, blacklist and allergen groups (see restrictions.py)."""
+    rows = session.execute(
+        select(UserRestricted.ingredient_id, UserRestricted.restriction_type).where(
+            UserRestricted.user_id == user_id
+        )
+    ).all()
     group_ids = session.execute(
         select(UserAllergenGroup.allergen_group_id).where(UserAllergenGroup.user_id == user_id)
     ).scalars()
-    return Restrictions(frozenset(ingredient_ids), frozenset(group_ids))
+    return Restrictions(
+        allergies=frozenset(r.ingredient_id for r in rows if r.restriction_type == "allergy"),
+        blacklist=frozenset(r.ingredient_id for r in rows if r.restriction_type == "blacklist"),
+        allergen_groups=frozenset(group_ids),
+    )
 
 
-def excluded_ingredient_ids(
-    session: Session, graph: IngredientGraph, restrictions: Restrictions
-) -> set[int]:
-    """Every ingredient id a recipe must not contain.
-
-    A restricted ingredient also excludes everything below it: an allergy to
-    "cheese" excludes recipes with "cheddar cheese".
-    """
-    excluded = set(restrictions.ingredient_ids)
-    if restrictions.allergen_group_ids:
-        excluded |= set(
-            session.execute(
-                select(IngredientAllergenGroup.ingredient_id).where(
-                    IngredientAllergenGroup.allergen_group_id.in_(
-                        sorted(restrictions.allergen_group_ids)
-                    )
-                )
-            ).scalars()
-        )
-    for ingredient_id in list(excluded):
-        excluded |= graph.descendants(ingredient_id)
-    return excluded
+def load_ingredient_groups(
+    session: Session, group_ids: Collection[int]
+) -> dict[int, set[int]]:
+    """ingredient_id -> the given allergen groups it belongs to."""
+    if not group_ids:
+        return {}
+    rows = session.execute(
+        select(IngredientAllergenGroup.ingredient_id, IngredientAllergenGroup.allergen_group_id)
+        .where(IngredientAllergenGroup.allergen_group_id.in_(sorted(group_ids)))
+    ).all()
+    groups: dict[int, set[int]] = defaultdict(set)
+    for r in rows:
+        groups[r.ingredient_id].add(r.allergen_group_id)
+    return dict(groups)
 
 
 def _unit(value: str | None) -> Unit | None:
@@ -155,7 +204,13 @@ def _unit(value: str | None) -> Unit | None:
         return None
 
 
-def _to_result(recipe: Recipe, match: RecipeMatch) -> RecipeResult:
+def _to_result(
+    recipe: Recipe,
+    match: Match,
+    owned: Collection[int],
+    parents: Mapping[int, int | None],
+    names: Mapping[int, str],
+) -> RecipeResult:
     return RecipeResult(
         recipe_id=recipe.recipe_id,
         title=recipe.title,
@@ -166,19 +221,24 @@ def _to_result(recipe: Recipe, match: RecipeMatch) -> RecipeResult:
         rating_avg=float(recipe.rating_avg) if recipe.rating_avg is not None else None,
         rating_count=recipe.rating_count,
         is_generated=bool(recipe.generated_tag),
-        tier=MatchTier(match.tier),
+        tier=match.tier,
         match_score=round(min(match.score, 1.0), 4),
         missing_ingredients=[
             MissingIngredient(
-                ingredient_id=m.ingredient_id,
-                name=m.name,
-                quantity=m.quantity,
-                unit=_unit(m.unit),
-                substitutes=list(m.substitutes),
+                ingredient_id=line.ingredient_id,
+                name=line.name,
+                quantity=line.quantity,
+                unit=_unit(line.unit),
+                substitutes=substitutes_for(line.ingredient_id, owned, parents, names),
             )
-            for m in match.missing
+            for line in match.missing
         ],
     )
+
+
+# --------------------------------------------------------------------------
+# The search
+# --------------------------------------------------------------------------
 
 
 def search_stored_recipes(
@@ -188,31 +248,22 @@ def search_stored_recipes(
     max_minutes: int | None = None,
     tools: Sequence[str] = (),
     restrictions: Restrictions = Restrictions(),
-    config: MatchConfig = MatchConfig(),
     limit: int = 20,
     offset: int = 0,
-    graph: IngredientGraph | None = None,
 ) -> StoredSearchResult:
     owned = {int(i) for i in owned_ids}
     if not owned:
         return StoredSearchResult([], 0)
 
-    graph = graph or load_graph(session)
-    matcher = OwnedMatcher(graph, owned)
-    excluded = excluded_ingredient_ids(session, graph, restrictions)
+    parents = load_parents(session)
 
-    shares_an_ingredient = select(RecipeIngredient.recipe_id).where(
-        RecipeIngredient.ingredient_id.in_(sorted(matcher.candidate_ids))
-    )
-    query = select(Recipe).where(Recipe.recipe_id.in_(shares_an_ingredient))
-    if excluded:
-        query = query.where(
-            ~Recipe.recipe_id.in_(
-                select(RecipeIngredient.recipe_id).where(
-                    RecipeIngredient.ingredient_id.in_(sorted(excluded))
-                )
+    query = select(Recipe).where(
+        Recipe.recipe_id.in_(
+            select(RecipeIngredient.recipe_id).where(
+                RecipeIngredient.ingredient_id.in_(sorted(related_ids(owned, parents)))
             )
         )
+    )
     if max_minutes is not None:
         query = query.where(
             or_(Recipe.total_minutes.is_(None), Recipe.total_minutes <= max_minutes)
@@ -243,9 +294,9 @@ def search_stored_recipes(
         .where(RecipeIngredient.recipe_id.in_(sorted(recipes)))
         .order_by(RecipeIngredient.recipe_ingredient_id)
     ).all()
-    lines: dict[int, list[RecipeLine]] = {}
+    lines: dict[int, list[RecipeLine]] = defaultdict(list)
     for r in rows:
-        lines.setdefault(r.recipe_id, []).append(
+        lines[r.recipe_id].append(
             RecipeLine(
                 ingredient_id=r.ingredient_id,
                 name=r.name,
@@ -255,17 +306,32 @@ def search_stored_recipes(
                 is_staple=bool(r.is_staple),
             )
         )
+    candidates = [
+        Candidate(recipe_id=rid, title=recipe.title, lines=tuple(lines.get(rid, ())))
+        for rid, recipe in recipes.items()
+    ]
 
-    scored: list[tuple[int, RecipeMatch]] = []
-    for recipe_id in recipes:
-        match = score_recipe(lines.get(recipe_id, []), matcher, config)
-        if match is not None:
-            scored.append((recipe_id, match))
-    scored.sort(key=lambda item: rank_key(*item))
+    matches = rank_stored(
+        candidates,
+        owned,
+        parents,
+        restrictions,
+        load_ingredient_groups(session, restrictions.allergen_groups),
+    )
 
-    page = scored[offset : offset + limit]
+    page = matches[offset : offset + limit]
+    names = {
+        row.ingredient_id: row.name
+        for row in session.execute(
+            select(Ingredient.ingredient_id, Ingredient.name).where(
+                Ingredient.ingredient_id.in_(sorted(owned))
+            )
+        ).all()
+    }
     return StoredSearchResult(
-        results=[_to_result(recipes[recipe_id], match) for recipe_id, match in page],
-        total=len(scored),
-        strong=sum(1 for _, match in scored if match.tier in (BEST, PARTIAL)),
+        results=[
+            _to_result(recipes[m.recipe_id], m, owned, parents, names) for m in page
+        ],
+        total=len(matches),
+        strong=sum(1 for m in matches if m.tier in (MatchTier.BEST, MatchTier.PARTIAL)),
     )
