@@ -88,3 +88,17 @@ def test_invalid_recipes_are_rejected(session, ingredients, overrides):
     with pytest.raises(InvalidRecipe):
         store_recipe(session, _recipe(**overrides))
     assert _count(session, Recipe) == 0
+
+
+def test_original_ingredient_line_is_saved_as_raw_text(session, ingredients):
+    recipe = _recipe(
+        ingredients=[
+            IngredientEntry("garlic", 2, "clove", raw_text="2 cloves garlic, minced"),
+            IngredientEntry("pasta"),
+        ]
+    )
+    stored = store_recipe(session, recipe).recipe
+    rows = session.execute(
+        select(RecipeIngredient).where(RecipeIngredient.recipe_id == stored.recipe_id)
+    ).scalars().all()
+    assert sorted((r.raw_text or "") for r in rows) == ["", "2 cloves garlic, minced"]
