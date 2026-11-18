@@ -51,7 +51,111 @@ _MIN_INGREDIENTS = 2
 
 # Wording that is common on recipe pages but that the normalizer does not handle.
 # Each rule rewrites the line into the plain form the normalizer understands.
+def _split_glued_mixed_number(match: re.Match) -> str:
+    """'11/2' is '1 1/2' with the space lost; '12/3' is '1 2/3'. Leave '10/2' alone."""
+    whole, numerator, denominator = match.group(1), match.group(2), match.group(3)
+    if 0 < int(numerator) < int(denominator):
+        return f"{whole} {numerator}/{denominator}"
+    return match.group(0)
+
+
+_NUMBER_WORDS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6"}
+
 _CLEANUP_RULES = [
+    # list bullets copied from the page: "-1 tsp salt", "* 2 carrots", "\u2022 1 onion"
+    (re.compile(r"^\s*[-\u2013\u2022*]+\s*(?=\w)"), ""),
+    # "about 2 tablespoons of oil"
+    (re.compile(r"^\s*(?:about|approximately|approx\.?|roughly)\s+(?=\d)", re.I), ""),
+    # "4 teaspoons, hoisin sauce, divided": a comma after the unit cuts the line in two
+    (re.compile(r"^(\s*[\d/.\s\u00bc-\u00be\u2150-\u215e-]+\s*(?:teaspoons?|tablespoons?|tsp|tbsp|cups?|ounces?|oz|pounds?|lbs?|grams?|g))\s*,\s*(?=[A-Za-z])", re.I), r"\1 "),
+    # "8 -10 leaves basil": a range with a space before the dash
+    (re.compile(r"(\d)\s+-\s*(\d)"), r"\1-\2"),
+    # "1 T olive oil", "2 t salt", "2-4 TB soy sauce": capital T is a tablespoon (case matters)
+    (re.compile(r"(?<=\d)\s+(?:T|TB|Tb)\b\.?(?=\s)"), " tbsp"),
+    (re.compile(r"(?<=\d)\s+t\b\.?(?=\s)"), " tsp"),
+    # "3 stalks celery", "8 leaves basil"
+    (re.compile(r"(?<=\d)\s+(?:stalks?|leaves)\s+(?:of\s+)?", re.I), " "),
+    # "1 tomato per person"
+    (re.compile(r"\s*\bper\s+person\b", re.I), ""),
+    # "1 pound penne pasta or other short tubular pasta"
+    (re.compile(r"\s+or\s+other\s+(?:[a-z]+\s+){0,3}pasta\b.*$", re.I), ""),
+    # brand names in front of an ordinary ingredient: "Morton salt", "Green Giant green beans"
+    (re.compile(r"\b(?:morton|diamond crystal|green giant|mccormick|fresh express|kikkoman)\b\u00ae?\s*", re.I), ""),
+    # "4 4-ounce pork chops": the count comes first, then the size of each
+    (re.compile(r"^\s*(\d+)\s+\d+(?:\.\d+)?[\s-]*(?:ounces?|oz)\b\.?\s+(?!(?:cans?|jars?|packages?|pkgs?|boxe?s?|cartons?|bottles?|blocks?|bags?)\b)(?=[A-Za-z])", re.I), r"\1 "),
+    # quantities: "1½" -> "1 ½", "1-1/3" -> "1 1/3", "11/2" -> "1 1/2", "One cucumber" -> "1 cucumber"
+    (re.compile(r"(\d)([\u00bc-\u00be\u2150-\u215e])"), r"\1 \2"),
+    (re.compile(r"(\d)-(\d+/\d+)"), r"\1 \2"),
+    (re.compile(r"\b(\d)(\d)/([2348])\b"), _split_glued_mixed_number),
+    (re.compile(r"^\s*(one|two|three|four|five|six)\s+", re.I),
+     lambda m: _NUMBER_WORDS[m.group(1).lower()] + " "),
+    # "2 Tbsp. and 2 tsp. vegetable oil": keep the first measure only
+    (re.compile(r"\b(?:and|plus)\s+\d+(?:\s+\d+/\d+|/\d+)?\s*(?:tsp|tbsp|teaspoons?|tablespoons?|cups?|c)\b\.?\s*", re.I), ""),
+    # "2/3 c. green onion": "c." means cup
+    (re.compile(r"(?<=\d)\s+c\b\.?\s+(?=[A-Za-z])", re.I), " cup "),
+    # "4 large cloves garlic": the size word sits between the number and the unit
+    (re.compile(r"(?<=\d)\s+(?:large|medium|small)\s+", re.I), " "),
+    # "1/2 bulb of garlic"
+    (re.compile(r"\b(?:bulbs?|heads?)\s+of\s+", re.I), ""),
+    # "5 or 6 large sweet potatoes": a range written with "or"
+    (re.compile(r"^\s*(\d+(?:/\d+)?)\s+or\s+(\d+(?:/\d+)?)\b"), r"\1-\2"),
+    # misspelled or abbreviated units
+    (re.compile(r"\b(?:tblsp|tblspn|tbl)\b\.?", re.I), "tbsp"),
+    (re.compile(r"(?<=\d)\s+tins?\b", re.I), " can"),
+    (re.compile(r"(?<=\d)\s+pkgs?\b\.?", re.I), " package"),
+    # "1 15-ounce can black beans", "one 14-oz. block tofu": keep the count, drop the package size
+    (re.compile(r"^\s*(\d+)\s+\d+(?:\.\d+)?[\s-]*(?:ounces?|oz)\.?\s+(?:cans?|jars?|packages?|pkgs?|boxe?s?|cartons?|bottles?|blocks?|bags?)\b\.?\s*(?:of\s+)?", re.I), r"\1 can "),
+    # "14 oz block of tofu": keep the weight, drop the package word
+    (re.compile(r"(\d+(?:\.\d+)?[\s-]*(?:ounces?|oz|g|ml))\.?\s+(?:blocks?|bags?|boxe?s?|jars?|packages?|cartons?|bottles?)\s+(?:of\s+)?", re.I), r"\1 "),
+    # "1 can (15 oz) can black beans"
+    (re.compile(r"\bcan\s+(?:\([^)]*\)\s+)?can\b", re.I), "can"),
+    # "Pinch of salt", "Dash of black pepper", "a pinch red pepper flakes"
+    (re.compile(r"^\s*(?:an?\s+)?(pinch|dash)(?:es)?\s+(?:of\s+)?", re.I), r"1 \1 "),
+    (re.compile(r"^\s*(?:an?\s+)?(?:shake|splash|handful|bunch)\s+of\s+", re.I), "1 "),
+    # "Salt & pepper"
+    (re.compile(r"\s&\s"), " and "),
+    # "peeled and deveined shrimp", "shelled and deveined shrimp": the "and" would split the line in two
+    (re.compile(r"\b(?:(?:peeled|shelled)\s+)?and\s+deveined\s+", re.I), ""),
+    # "garlic cloves peeled and chopped": same problem, and the prep is not part of the name
+    (re.compile(r"\b(?:peeled|trimmed|washed)\s+and\s+(?:chopped|minced|diced|sliced|crushed|grated)\b,?\s*", re.I), ""),
+    # "1 packet taco seasoning"
+    (re.compile(r"(?<=\d)\s+packets?\b", re.I), " package"),
+    # "1/2 head broccoli" (the "head of" form is handled above)
+    (re.compile(r"(?<=[\d/])\s+heads?\s+(?!of\b)", re.I), " "),
+    # "1 sheet nori seaweed", "2 sheets of nori"
+    (re.compile(r"(?<=\d)\s+sheets?\s+(?:of\s+)?", re.I), " "),
+    # "skin-on salmon fillets"
+    (re.compile(r"\bskin[\s-]on\b,?\s*", re.I), ""),
+    # "diced tomatoes in juice"
+    (re.compile(r"\b(?:in|with)\s+juice\b", re.I), ""),
+    # "1 small container mascarpone cheese"
+    (re.compile(r"(?<=\d)\s+(?:small\s+|large\s+)?(?:containers?|tubs?)\s+(?:of\s+)?", re.I), " "),
+    # "1 loaf French bread", "2 ears fresh corn"
+    (re.compile(r"(?<=\d)\s+loaf\s+(?:of\s+)?", re.I), " "),
+    (re.compile(r"(?<=\d)\s+ears?\s+(?:of\s+)?", re.I), " "),
+    # "1/2 tsp each of salt and pepper", "2 each eggs"
+    (re.compile(r"\beach\b(?:\s+of\b)?\s*", re.I), ""),
+    # "medium-sized potatoes", "filets"
+    (re.compile(r"\b(?:large|medium|small)[\s-]sized\s+", re.I), ""),
+    (re.compile(r"\bfilet(s?)\b", re.I), r"fillet\1"),
+    # notes that follow the ingredient: "- divided use", "+ extra", "cut into 2 fillets",
+    # a trailing sentence ("... You can use dried.")
+    (re.compile(r"\s+[-\u2013]\s+(?:divided|plus|use|see).*$", re.I), ""),
+    (re.compile(r"\s*\+\s*(?:extra|more)\b.*$", re.I), ""),
+    (re.compile(r"\s+cut\s+into\s+.*$", re.I), ""),
+    (re.compile(r"\.\s+(?:You|It|This|If|I|Use|Or|Note|See)\b.*$"), ""),
+    (re.compile(r"\b(?:for the pan|for greasing|for brushing|for the grill)\b", re.I), " "),
+    (re.compile(r"\bgood[\s-]quality\s+", re.I), ""),
+    (re.compile(r"\blite\s+(?=soy)", re.I), ""),
+    # "1 bell pepper red, yellow, or orange, chopped"
+    (re.compile(r"\b(bell pepper)\s+(?:red|green|yellow|orange)\b.*$", re.I), r"\1"),
+    # wording that describes the product, not which ingredient it is
+    (re.compile(r"\b(?:low|reduced)[\s-](?:sodium|fat)\b,?\s*", re.I), ""),
+    (re.compile(r"\b(?:fat|sugar)[\s-]free\b,?\s*", re.I), ""),
+    (re.compile(r"\bnon[\s-]?fat\b,?\s*", re.I), ""),
+    (re.compile(r"\bbone[\s-]in\b,?\s*", re.I), ""),
+    (re.compile(r"\b(?:hot|warm|cold|ice|boiling|lukewarm)\s+water\b", re.I), "water"),
+    (re.compile(r"\b(?:cooked and chilled|chilled)\s+", re.I), ""),
     # "Salt to taste", "olive oil for frying": notes without a comma
     (re.compile(r"\b(?:to taste|as needed|for serving|for garnish|for frying|for dusting)\b", re.I), " "),
     # "boneless, skinless chicken thighs": the comma would cut the line short
@@ -102,7 +206,7 @@ def parse_quantity_and_unit(line: str) -> tuple[float | None, str | None]:
     "2 cloves garlic" -> (2.0, "clove");  "500g chicken" -> (500.0, "g");
     "2-3 eggs" -> (2.0, None) (a range keeps the lower number);  "salt" -> (None, None).
     """
-    text = unicodedata.normalize("NFKD", line).replace("⁄", "/").strip()
+    text = unicodedata.normalize("NFKD", _preclean(line)).replace("⁄", "/").strip()
     match = _QUANTITY_RE.match(text)
     if not match:
         return None, None
@@ -118,6 +222,26 @@ def parse_quantity_and_unit(line: str) -> tuple[float | None, str | None]:
     return quantity, unit
 
 
+# Words that usually describe the form, not the ingredient. They are only dropped
+# when the line is NOT recognized as written, so "ground beef" and "dried
+# cranberries" still match exactly when the vocabulary has them, while "ground
+# cinnamon" falls back to "cinnamon".
+_SOFT_WORDS = frozenset(
+    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked crumbled ripe scrubbed seeded shelled hot baby super firm larger fine condensed crusty".split()
+)
+
+
+def _resolve(text: str, lookup: dict[str, str]) -> str | None:
+    name = resolve_ingredient(text, lookup)
+    if name is not None:
+        return name
+    words = normalize_ingredient(text).split()
+    kept = [w for w in words if w not in _SOFT_WORDS]
+    if kept and len(kept) < len(words):
+        return lookup.get(" ".join(kept))
+    return None
+
+
 def _is_section_header(line: str) -> bool:
     """'For the sauce:' is a heading inside an ingredient list, not an ingredient."""
     stripped = line.strip()
@@ -129,20 +253,26 @@ def map_ingredient_line(line: str, lookup: dict[str, str]) -> list[MappedIngredi
 
     "Salt and pepper to taste" gives two ingredients when both halves are known.
     """
-    quantity, unit = parse_quantity_and_unit(line)
+    cleaned = _preclean(line)
+    quantity, unit = parse_quantity_and_unit(cleaned)
     optional = "optional" in line.lower()
 
-    cleaned = _preclean(line)
-    name = resolve_ingredient(cleaned, lookup)
+    name = _resolve(cleaned, lookup)
     if name is not None:
         return [MappedIngredient(name, quantity, unit, optional, line)]
 
-    # "salt and pepper": only accepted when BOTH halves are recognized.
     key = normalize_ingredient(cleaned)
+    # "salt and pepper": only accepted when BOTH halves are recognized.
     if " and " in key:
-        names = [resolve_ingredient(part, lookup) for part in key.split(" and ")]
+        names = [_resolve(part, lookup) for part in key.split(" and ")]
         if all(names):
             return [MappedIngredient(n, None, None, optional, line) for n in names]
+    # "butter or margarine", "sweet or smoked paprika": the first alternative we know.
+    if " or " in key:
+        for part in key.split(" or "):
+            name = _resolve(re.sub(r"^other\s+", "", part.strip()), lookup)
+            if name is not None:
+                return [MappedIngredient(name, quantity, unit, optional, line)]
     return None
 
 

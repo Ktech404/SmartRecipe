@@ -29,6 +29,16 @@ and `cp .env.example .env` instead.
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime, 1–1440 minutes; default 30 |
 | `GEMINI_API_KEY` | API key for Gemini recipe parsing (Google AI Studio) |
 | `GEMINI_MODEL` | Optional. Gemini model name; default `gemini-3.5-flash-lite` |
+| `LIVE_SEARCH_ENABLED` | Optional. `false` turns the web fallback of `POST /recipes/search` off; default `true` |
+| `LIVE_SEARCH_THIN_THRESHOLD` | Optional. Search the web when fewer than this many best or partial matches are stored; default 5 |
+| `LIVE_SEARCH_MAX_PAGES` | Optional. Web pages requested per live search; default 6 |
+| `LIVE_SEARCH_TARGET` | Optional. Stop a live search after storing this many new recipes; default 3 |
+| `LIVE_SEARCH_PARSE_DELAY` | Optional. Seconds to wait between Gemini calls (or batches); default 1.0 |
+| `LIVE_SEARCH_WORKERS` | Optional. Pages parsed at the same time; default 2. Use 1 if Gemini rate limits |
+| `LIVE_SEARCH_CACHE_HOURS` | Optional. Do not repeat a successful web search for the same ingredients for this long; default 24, `0` turns it off |
+
+Live search needs both `LANGSEARCH_API_KEY` and `GEMINI_API_KEY`. Without them the
+search endpoint still works from stored recipes and reports `degraded: true`.
 
 The example database credentials are for the local Docker service only.
 Use independent credentials and HTTPS for deployed services. Do not log request
@@ -71,6 +81,77 @@ uniqueness. Passwords use Argon2id hashing. JWTs use HS256, expiration, user ID
 subject, issuer and audience validation. Profiles never include password fields.
 Request validation responses omit submitted inputs. Swagger's Authorize dialog
 accepts the access token returned by JSON login.
+
+## Recipe search API
+
+`POST /recipes/search` finds recipes that match the ingredients a user has. It needs
+`Authorization: Bearer <access_token>`.
+
+Request (only `ingredients` is required):
+
+```json
+{
+  "ingredients": [{"name": "chicken breast"}, {"name": "rice"}, {"name": "garlic"}],
+  "max_minutes": 30,
+  "servings": 2,
+  "tools": ["oven"],
+  "description": "a cozy weeknight dinner",
+  "limit": 20,
+  "offset": 0
+}
+```
+
+- At least 2 different ingredients are required. Names are matched through the
+  ingredient vocabulary and its synonyms, so "chicken" finds chicken breast.
+- `max_minutes` keeps recipes with no stored time. `tools` is the tools the user
+  has: a recipe is dropped if it needs a tool that is not listed.
+- The user's saved allergies, allergen groups and blacklist are always applied.
+- `limit` is 1–50 (default 20); `offset` pages through the results.
+
+Response: `results` (each with `recipe_id`, `title`, `source_url`, `tier`,
+`match_score` and `missing_ingredients` with quantities and substitute suggestions),
+`total`, `limit`, `offset` and `degraded`.
+
+Tiers come from `app/services/matching.py`: `best` at 0.8 or more of the recipe's
+required ingredients covered, `partial` at 0.5 or more, `low` below that. Recipes
+under 0.25 are not returned. Owning a more specific ingredient covers a general one
+("cheddar" covers "cheese"), and the reverse; siblings do not cover each other but
+are suggested as substitutes.
+
+Errors use one body, `{"error": {"code", "message", ...}}`, with status 422 and
+codes `too_few_ingredients`, `invalid_ingredients` (lists the names that are not
+recognized as food) and `validation_error`. A missing or expired token returns 401.
+
+When fewer than `LIVE_SEARCH_THIN_THRESHOLD` good matches are stored (first page only),
+the endpoint searches the web, parses and stores new recipes, and searches again. This
+takes roughly 10–20 seconds. If the web part fails, the stored results are returned with
+`degraded: true`. A successful web search for the same ingredients is not repeated for
+`LIVE_SEARCH_CACHE_HOURS`.
+
+## Loading recipes (ingestion)
+
+Recipes are collected from the web with LangSearch, parsed by Gemini, mapped to the
+ingredient vocabulary and stored. Run from `backend`, after `alembic upgrade head` and
+`scripts.seed`:
+
+```powershell
+.venv/Scripts/python -m scripts.ingest "chicken, rice, garlic"
+.venv/Scripts/python -m scripts.ingest "chicken, rice, garlic" --dry-run
+.venv/Scripts/python -m scripts.ingest --file queries.txt --limit 10
+.venv/Scripts/python -m scripts.ingest --default --target 60
+```
+
+- `--dry-run` parses and maps but stores nothing. Ctrl+C stops safely; stored recipes
+  are kept.
+- A recipe is skipped if any ingredient line is not in the vocabulary
+  (`--allow-unrecognized N` loosens this). The run ends with a list of the most common
+  unrecognized lines: add them to `seed/ingredients.csv` or `seed/ingredient_synonyms.csv`
+  and run `scripts.seed` again.
+- `--prefilter` skips pages that cannot be recipes before spending Gemini calls;
+  `--workers N` parses N pages at the same time.
+- Duplicates are skipped by URL, by site and title, and by content.
+- A full `--default` run uses roughly 130k LangSearch tokens and 100k Gemini input
+  tokens. A Gemini rate limit stops the run cleanly; run it again after it resets.
 
 ## Testing
 
