@@ -64,6 +64,23 @@ _NUMBER_WORDS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
 _CLEANUP_RULES = [
     # list bullets copied from the page: "-1 tsp salt", "* 2 carrots", "\u2022 1 onion"
     (re.compile(r"^\s*[-\u2013\u2022*]+\s*(?=\w)"), ""),
+    # "about 2 tablespoons of oil"
+    (re.compile(r"^\s*(?:about|approximately|approx\.?|roughly)\s+(?=\d)", re.I), ""),
+    # "4 teaspoons, hoisin sauce, divided": a comma after the unit cuts the line in two
+    (re.compile(r"^(\s*[\d/.\s\u00bc-\u00be\u2150-\u215e-]+\s*(?:teaspoons?|tablespoons?|tsp|tbsp|cups?|ounces?|oz|pounds?|lbs?|grams?|g))\s*,\s*(?=[A-Za-z])", re.I), r"\1 "),
+    # "8 -10 leaves basil": a range with a space before the dash
+    (re.compile(r"(\d)\s+-\s*(\d)"), r"\1-\2"),
+    # "1 T olive oil", "2 t salt", "2-4 TB soy sauce": capital T is a tablespoon (case matters)
+    (re.compile(r"(?<=\d)\s+(?:T|TB|Tb)\b\.?(?=\s)"), " tbsp"),
+    (re.compile(r"(?<=\d)\s+t\b\.?(?=\s)"), " tsp"),
+    # "3 stalks celery", "8 leaves basil"
+    (re.compile(r"(?<=\d)\s+(?:stalks?|leaves)\s+(?:of\s+)?", re.I), " "),
+    # "1 tomato per person"
+    (re.compile(r"\s*\bper\s+person\b", re.I), ""),
+    # "1 pound penne pasta or other short tubular pasta"
+    (re.compile(r"\s+or\s+other\s+(?:[a-z]+\s+){0,3}pasta\b.*$", re.I), ""),
+    # brand names in front of an ordinary ingredient: "Morton salt", "Green Giant green beans"
+    (re.compile(r"\b(?:morton|diamond crystal|green giant|mccormick|fresh express|kikkoman)\b\u00ae?\s*", re.I), ""),
     # "4 4-ounce pork chops": the count comes first, then the size of each
     (re.compile(r"^\s*(\d+)\s+\d+(?:\.\d+)?[\s-]*(?:ounces?|oz)\b\.?\s+(?!(?:cans?|jars?|packages?|pkgs?|boxe?s?|cartons?|bottles?|blocks?|bags?)\b)(?=[A-Za-z])", re.I), r"\1 "),
     # quantities: "1½" -> "1 ½", "1-1/3" -> "1 1/3", "11/2" -> "1 1/2", "One cucumber" -> "1 cucumber"
@@ -210,7 +227,7 @@ def parse_quantity_and_unit(line: str) -> tuple[float | None, str | None]:
 # cranberries" still match exactly when the vocabulary has them, while "ground
 # cinnamon" falls back to "cinnamon".
 _SOFT_WORDS = frozenset(
-    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked crumbled ripe scrubbed seeded shelled hot baby super firm larger".split()
+    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked crumbled ripe scrubbed seeded shelled hot baby super firm larger fine condensed crusty".split()
 )
 
 
