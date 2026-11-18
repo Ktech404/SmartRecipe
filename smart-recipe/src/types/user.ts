@@ -13,11 +13,26 @@ export interface RegisterRequest {
 }
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
+}
+
+export interface AuthProfile {
+  user_id: number;
+  username: string;
+  email: string;
+  avatar_url: string | null;
+  created_at: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 export interface UserPreferences {
   allergies: string[];
   dietaryPreferences: string[];
 }
+

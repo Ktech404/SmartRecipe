@@ -3,6 +3,7 @@ export const API_ENDPOINTS = {
   // Authentication
   REGISTER: "/auth/register",
   LOGIN: "/auth/login",
+  AUTH_PROFILE: "/auth/me",
   LOGOUT: "/auth/logout",
 
   // User account
@@ -25,3 +26,4 @@ export const API_ENDPOINTS = {
   SHOPPING_LIST_ITEM: (id: string) => `/shopping-list/${id}`,
 
 };
+

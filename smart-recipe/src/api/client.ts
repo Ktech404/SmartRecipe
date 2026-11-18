@@ -1,4 +1,4 @@
-
+import { readSession } from "@/src/auth/session";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 type ApiRequestOptions = RequestInit & {
@@ -24,6 +24,14 @@ export async function apiRequest<T>(
   }
 
   const { params, headers, ...requestOptions } = options;
+  const requestHeaders = new Headers(headers);
+  if (requestOptions.body && !requestHeaders.has("Content-Type")) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+  const session = readSession();
+  if (session && !requestHeaders.has("Authorization")) {
+    requestHeaders.set("Authorization", `Bearer ${session.token}`);
+  }
 
   const url = new URL(
     `${API_BASE_URL}${endpoint}`,
@@ -40,23 +48,18 @@ export async function apiRequest<T>(
 
   const response = await fetch(url.toString(), {
     ...requestOptions,
-    headers: {
-      ...(requestOptions.body
-        ? { "Content-Type": "application/json" }
-        : {}),
-      ...headers,
-    },
+    headers: requestHeaders,
     credentials: "include",
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
 
-    throw new ApiError(
-      errorData?.detail ||
-        `API request failed: ${response.status}`,
-      response.status
-    );
+    let message = `API request failed: ${response.status}`;
+    if (typeof errorData?.detail === "string") message = errorData.detail;
+    else if (typeof errorData?.error?.message === "string") message = errorData.error.message;
+    else if (Array.isArray(errorData?.detail)) message = "Please check the form fields and try again.";
+    throw new ApiError(message, response.status);
   }
 
   if (response.status === 204) {
@@ -65,3 +68,4 @@ export async function apiRequest<T>(
 
   return response.json() as Promise<T>;
 }
+
