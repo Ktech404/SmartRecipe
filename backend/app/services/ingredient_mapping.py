@@ -97,8 +97,18 @@ _CLEANUP_RULES = [
     (re.compile(r"^\s*(?:an?\s+)?(?:shake|splash|handful|bunch)\s+of\s+", re.I), "1 "),
     # "Salt & pepper"
     (re.compile(r"\s&\s"), " and "),
-    # "peeled and deveined shrimp": the "and" would split the line in two
-    (re.compile(r"\b(?:peeled\s+)?and\s+deveined\s+", re.I), ""),
+    # "peeled and deveined shrimp", "shelled and deveined shrimp": the "and" would split the line in two
+    (re.compile(r"\b(?:(?:peeled|shelled)\s+)?and\s+deveined\s+", re.I), ""),
+    # "garlic cloves peeled and chopped": same problem, and the prep is not part of the name
+    (re.compile(r"\b(?:peeled|trimmed|washed)\s+and\s+(?:chopped|minced|diced|sliced|crushed|grated)\b,?\s*", re.I), ""),
+    # "1 packet taco seasoning"
+    (re.compile(r"(?<=\d)\s+packets?\b", re.I), " package"),
+    # "1/2 head broccoli" (the "head of" form is handled above)
+    (re.compile(r"(?<=[\d/])\s+heads?\s+(?!of\b)", re.I), " "),
+    # "1 sheet nori seaweed", "2 sheets of nori"
+    (re.compile(r"(?<=\d)\s+sheets?\s+(?:of\s+)?", re.I), " "),
+    # "skin-on salmon fillets"
+    (re.compile(r"\bskin[\s-]on\b,?\s*", re.I), ""),
     # "diced tomatoes in juice"
     (re.compile(r"\b(?:in|with)\s+juice\b", re.I), ""),
     # "1 small container mascarpone cheese"
@@ -200,7 +210,7 @@ def parse_quantity_and_unit(line: str) -> tuple[float | None, str | None]:
 # cranberries" still match exactly when the vocabulary has them, while "ground
 # cinnamon" falls back to "cinnamon".
 _SOFT_WORDS = frozenset(
-    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked".split()
+    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked crumbled ripe scrubbed seeded shelled hot baby super firm larger".split()
 )
 
 

@@ -358,3 +358,64 @@ def test_list_bullets_and_per_item_sizes(seed_lookup, line, expected):
 def test_a_leading_dash_does_not_turn_a_quantity_negative_or_lose_the_unit(seed_lookup):
     [item] = map_ingredient_line("-2 Tbsp paprika", seed_lookup)
     assert item.quantity == 2.0 and item.unit == "tbsp"
+
+
+# ---- wording found in real recipe pages (SCRUM-37) -----------------------------
+
+
+@pytest.mark.skipif(not (SEED / "ingredients.csv").exists(), reason="seed CSVs missing")
+@pytest.mark.parametrize(
+    "line, name, quantity, unit",
+    [
+        ("1 cup crumbled feta cheese", "feta cheese", 1.0, "cup"),
+        ("4 oz feta cheese crumbles", "feta cheese", 4.0, "oz"),
+        ("2 ripe tomatoes", "tomato", 2.0, None),
+        ("1 lb scrubbed potatoes", "potato", 1.0, "lb"),
+        ("2 yellow-fleshed potatoes", "potato", 2.0, None),
+        ("1 cup sushi rice", "rice", 1.0, "cup"),
+        ("1 cup Japanese short grain rice", "rice", 1.0, "cup"),
+        ("2 cups pre-cooked rice", "rice", 2.0, "cup"),
+        ("1 cup hot cooked rice", "rice", 1.0, "cup"),
+        ("8 oz angel hair pasta", "pasta", 8.0, "oz"),
+        ("8 oz whole-wheat spaghetti", "spaghetti", 8.0, "oz"),
+        ("1 lb turkey mince", "ground turkey", 1.0, "lb"),
+        ("4 baby cremini mushrooms", "mushroom", 4.0, None),
+        ("14 oz super firm tofu", "tofu", 14.0, "oz"),
+        ("2 tbsp white vinegar", "white vinegar", 2.0, "tbsp"),
+        ("1 sheet nori seaweed", "nori", 1.0, None),
+        ("8 egg roll wrappers", "egg roll wrapper", 8.0, None),
+        ("2 lb pork butt or shoulder", "pork shoulder", 2.0, "lb"),
+        ("4 oz whipped cream cheese", "cream cheese", 4.0, "oz"),
+        ("1 packet taco seasoning", "taco seasoning", 1.0, "package"),
+        ("1 minced seeded jalapeno", "jalapeno pepper", 1.0, None),
+        ("1 lb shelled and deveined shrimp", "shrimp", 1.0, "lb"),
+        ("3 large garlic cloves peeled and chopped", "garlic", 3.0, None),
+        ("1/2 head broccoli, cut into small florets", "broccoli", 0.5, None),
+        ("4 skin-on salmon fillets", "salmon", 4.0, None),
+        ("1 tsp garlic salt", "garlic salt", 1.0, "tsp"),
+        ("1 tbs parsley flakes", "parsley", 1.0, "tbsp"),
+        ("1 red chilli, thinly sliced", "chili pepper", 1.0, None),
+        ("40 g of wheat flour", "all purpose flour", 40.0, "g"),
+        ("2 cups cooked chicken", "chicken breast", 2.0, "cup"),
+    ],
+)
+def test_real_page_wording_maps_to_one_ingredient(line, name, quantity, unit):
+    [item] = map_ingredient_line(line, load_seed_lookup(SEED))
+    assert (item.name, item.quantity, item.unit) == (name, quantity, unit)
+
+
+@pytest.mark.skipif(not (SEED / "ingredients.csv").exists(), reason="seed CSVs missing")
+def test_a_plain_chicken_search_resolves_to_chicken_breast():
+    from app.services.normalization import resolve_ingredient
+
+    assert resolve_ingredient("chicken", load_seed_lookup(SEED)) == "chicken breast"
+
+
+@pytest.mark.skipif(not (SEED / "ingredients.csv").exists(), reason="seed CSVs missing")
+def test_specific_names_are_not_swallowed_by_the_new_soft_words():
+    lookup = load_seed_lookup(SEED)
+    for line, name in [("1 cup hot sauce", "hot sauce"), ("2 tbsp whole wheat flour", "whole wheat flour"),
+                       ("1 chicken breast", "chicken breast"), ("1 tsp garlic powder", "garlic powder")]:
+        result = map_ingredient_line(line, lookup)
+        if result is not None:  # skip a name the seed does not have
+            assert result[0].name == name
