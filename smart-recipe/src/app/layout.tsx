@@ -4,6 +4,7 @@ import "./globals.css";
 
 import Header from "@/src/components/Header";
 import Footer from "@/src/components/Footer";
+import { AuthProvider } from "@/src/auth/AuthProvider";
 
 export const metadata: Metadata = {
   title: {
@@ -22,10 +23,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <AuthProvider>
         <Header />
         <main className="main-content">{children}</main>
         <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
 }
+

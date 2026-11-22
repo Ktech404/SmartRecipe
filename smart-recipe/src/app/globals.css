@@ -1669,3 +1669,12 @@ label,
     animation-duration: 0.01ms !important;
   }
 }
+
+
+/* Authentication */
+.auth-page { max-width: 600px; }
+.auth-switch { margin-top: 20px; }
+.auth-error { color: var(--danger); }
+.auth-page dd { margin: 0 0 18px; overflow-wrap: anywhere; }
+.auth-page dt { font-weight: 700; }
+.auth-page .helper-text { color: var(--text-secondary); }
