@@ -13,6 +13,9 @@ Rules worth knowing:
 - Duplicates are skipped BEFORE the Gemini call wherever possible, because a
   Gemini call is the slow and rate-limited step: same normalized URL (in this
   run or already stored), or the same site with the same page title.
+- Optional (prefilter=True): pages that cannot be a recipe are skipped before the
+  Gemini call: no mention of ingredients, a list of recipes, or a tag/category page.
+- Optional (workers=N): parse N pages at the same time.
 - A recipe with an ingredient line we do not recognize is skipped (team
   decision). Those lines are collected in the report so the vocabulary can grow.
 - A Gemini or LangSearch rate limit stops the whole run. Hammering a limit that
@@ -24,6 +27,7 @@ import re
 import time
 from collections import Counter
 from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -66,6 +70,7 @@ class IngestReport:
     duplicate_title: int = 0  # same site and same title as another recipe
     duplicate_content: int = 0  # same recipe found at a different URL
     parse_errors: int = 0
+    prefiltered: int = 0  # skipped before Gemini because the page cannot be a recipe
     not_usable: Counter = field(default_factory=Counter)  # parser outcome -> count
     rejected_mapping: int = 0  # unrecognized ingredient lines
     store_errors: int = 0
@@ -84,6 +89,8 @@ class IngestReport:
             f"{self.duplicate_title} by site+title, {self.duplicate_content} by content",
             f"  parse errors:             {self.parse_errors}",
         ]
+        if self.prefiltered:
+            lines.append(f"  skipped before Gemini:    {self.prefiltered}")
         for outcome, count in sorted(self.not_usable.items()):
             lines.append(f"  not stored, {outcome}: {count}")
         lines += [
@@ -100,6 +107,26 @@ class IngestReport:
             for key, count in self.unrecognized.most_common(top_unrecognized):
                 lines.append(f"  {count:3d}x  {key}   e.g. {self.unrecognized_examples[key]!r}")
         return "\n".join(lines)
+
+
+_INGREDIENT_HINT = re.compile(r"ingredient|you(?:'ll| will)? need|what you need", re.I)
+_LISTING_TITLE = re.compile(r"^\s*\d+\s+(?:[\w'-]+\s+){0,5}recipes?\b", re.I)  # "25 mushroom pasta recipes"
+_LISTING_URL = re.compile(r"/(?:tags?|categor(?:y|ies)|archives?|search|collections?|roundups?)/|[?&]s=", re.I)
+
+
+def prefilter_reason(raw: RawRecipe) -> str | None:
+    """Why this page cannot be worth a Gemini call, or None to go ahead.
+
+    The checks are cheap and a little cautious. They only drop pages that almost
+    never turn into a stored recipe.
+    """
+    if not _INGREDIENT_HINT.search(raw.page_text or ""):
+        return "no ingredients on the page"
+    if _LISTING_TITLE.match(raw.title or ""):
+        return "a list of recipes"
+    if _LISTING_URL.search(raw.source_url or ""):
+        return "a tag, category or search page"
+    return None
 
 
 class _Stop(Exception):
@@ -124,7 +151,11 @@ class Ingestor:
         parse_delay: float = 5.0,  # keeps us under the Gemini free-tier per-minute limit
         sleep: Callable[[float], None] = time.sleep,
         progress: Callable[[str], None] | None = None,
+        prefilter: bool = False,
+        workers: int = 1,
     ) -> None:
+        self._prefilter = prefilter
+        self._workers = max(1, workers)
         self._progress = progress or (lambda message: None)
         self._provider = provider
         self._parser = parser
@@ -179,25 +210,66 @@ class Ingestor:
             self._progress(f"  search failed: {type(error).__name__}")
             return
         self._progress(f"  {len(results)} pages returned")
+        if self._workers > 1:
+            self._run_parallel(results, report, target)
+            return
         for raw in results:
             report.results += 1
             self._process(raw, report)
             if self._target_reached(report, target):
                 return
 
-    def _process(self, raw: RawRecipe, report: IngestReport) -> None:
+    def _run_parallel(self, results: list[RawRecipe], report: IngestReport, target: int | None) -> None:
+        """Parse several pages at once, then store them in the original order.
+
+        Pages go to Gemini in batches of `workers`. After each batch the target is
+        checked, so at most workers - 1 pages are parsed beyond it.
+        """
+        pending: list[RawRecipe] = []
+        for raw in results:
+            report.results += 1
+            if self._precheck(raw, report):
+                pending.append(raw)
+        for start in range(0, len(pending), self._workers):
+            batch = pending[start : start + self._workers]
+            with ThreadPoolExecutor(max_workers=len(batch)) as pool:
+                futures = [pool.submit(self._parser.parse, raw) for raw in batch]
+                outcomes = []
+                for future in futures:
+                    try:
+                        outcomes.append((future.result(), None))
+                    except ParserError as error:
+                        outcomes.append((None, error))
+            self._sleep(self._parse_delay)
+            for raw, (parsed, error) in zip(batch, outcomes):
+                if error is not None:
+                    self._handle_parse_error(raw, error, report)
+                else:
+                    self._handle_parsed(raw, parsed, report)
+                if self._target_reached(report, target):
+                    return
+
+    def _precheck(self, raw: RawRecipe, report: IngestReport) -> bool:
+        """The cheap checks before a Gemini call. True means: go ahead and parse."""
         label = raw.title[:70]
         say = self._progress
         url = normalize_url(raw.source_url)
         if url is None:
             report.bad_url += 1
             say(f"  skip (bad URL)        {label}")
-            return
+            return False
         if url in self._seen_urls or self._repo.has_url(url):
             report.duplicate_url += 1
             say(f"  skip (already have)   {label}")
-            return
+            return False
         self._seen_urls.add(url)
+
+        if self._prefilter:
+            reason = prefilter_reason(raw)
+            if reason:
+                report.prefiltered += 1
+                say(f"  skip (prefiltered: {reason})  {label}")
+                return False
 
         # Same site and same page title: almost always the same recipe reached by
         # a different URL (comment links, mobile pages). Skip before paying for Gemini.
@@ -206,20 +278,31 @@ class Ingestor:
             if key in self._seen_titles:
                 report.duplicate_title += 1
                 say(f"  skip (same title)     {label}")
-                return
+                return False
             self._seen_titles.add(key)
+        return True
 
+    def _process(self, raw: RawRecipe, report: IngestReport) -> None:
+        if not self._precheck(raw, report):
+            return
         try:
             parsed = self._parser.parse(raw)
-        except ParserRateLimited as error:
-            raise _Stop(f"Gemini rate limit reached ({error}); wait and run again") from error
         except ParserError as error:
-            report.parse_errors += 1
-            say(f"  skip (parse error: {type(error).__name__})  {label}")
+            self._handle_parse_error(raw, error, report)
             self._sleep(self._parse_delay)
             return
         self._sleep(self._parse_delay)
+        self._handle_parsed(raw, parsed, report)
 
+    def _handle_parse_error(self, raw: RawRecipe, error: ParserError, report: IngestReport) -> None:
+        if isinstance(error, ParserRateLimited):
+            raise _Stop(f"Gemini rate limit reached ({error}); wait and run again") from error
+        report.parse_errors += 1
+        self._progress(f"  skip (parse error: {type(error).__name__})  {raw.title[:70]}")
+
+    def _handle_parsed(self, raw: RawRecipe, parsed, report: IngestReport) -> None:
+        label = raw.title[:70]
+        say = self._progress
         if not parsed.usable:
             report.not_usable[parsed.outcome.value] += 1
             say(f"  skip ({parsed.outcome.value})  {label}")
