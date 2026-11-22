@@ -162,6 +162,10 @@ _CLEANUP_RULES = [
     (re.compile(r"\b(boneless|skinless|peeled|seeded|cored|trimmed|pitted),\s+(?=\w)", re.I), r"\1 "),
     # "1 cup uncooked rice"
     (re.compile(r"\buncooked\s+", re.I), ""),
+    # "2% milk", "1% low-fat milk": the fat percentage is not a different ingredient
+    (re.compile(r"\b\d{1,2}(?:\.\d+)?\s*%\s*(?=(?:reduced[\s-]fat\s+|low[\s-]fat\s+|milkfat\s+)?(?:milk|cottage|yogh?urt|cream|cheese|buttermilk)\b)", re.I), ""),
+    # "small curd cottage cheese", "large-curd cottage cheese"
+    (re.compile(r"\b(?:small|large)[\s-]curd\s+", re.I), ""),
     # "1 inch piece fresh ginger", "2-inch knob of ginger"
     (re.compile(r"\b\d+(?:/\d+)?[\s-]*inch(?:es)?\s+(?:piece|pieces|knob|chunk)?\s*(?:of\s+)?", re.I), "1 "),
     # "juice of 1 lime", "zest of a lemon"
@@ -227,7 +231,7 @@ def parse_quantity_and_unit(line: str) -> tuple[float | None, str | None]:
 # cranberries" still match exactly when the vocabulary has them, while "ground
 # cinnamon" falls back to "cinnamon".
 _SOFT_WORDS = frozenset(
-    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked crumbled ripe scrubbed seeded shelled hot baby super firm larger fine condensed crusty".split()
+    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked crumbled ripe scrubbed seeded shelled hot baby super firm larger fine condensed crusty beaten soft snipped".split()
 )
 
 

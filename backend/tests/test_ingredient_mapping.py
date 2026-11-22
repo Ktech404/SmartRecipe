@@ -450,3 +450,29 @@ def test_the_new_unit_and_wording_rules_leave_other_lines_alone():
     assert (item.name, item.quantity, item.unit) == ("salt", 2.0, "tsp")
     [item] = map_ingredient_line("1 cup rice", lookup)
     assert (item.name, item.quantity, item.unit) == ("rice", 1.0, "cup")
+
+
+@pytest.mark.parametrize(
+    "line, expected",
+    [
+        ("1 cup 2% milk", "milk"),
+        ("1 cup 1 % low-fat milk", "milk"),
+        ("2 beaten eggs", "egg"),
+        ("1/2 cup soft butter", "butter"),
+        ("2 tsp dried dill weed", "dill"),
+        ("1 tablespoon fresh dill weed", "dill"),
+        ("1 cup small curd cottage cheese", "cottage cheese"),
+        ("1 cup large-curd cottage cheese", "cottage cheese"),
+        ("2 tbsp snipped parsley", "parsley"),
+        ("2 tbsp snipped fresh chives", "chive"),
+    ],
+)
+def test_everyday_wording_from_the_second_ingestion_run(seed_lookup, line, expected):
+    items = map_ingredient_line(line, seed_lookup)
+    assert items is not None, line
+    assert items[0].name == expected
+
+
+def test_fat_percentage_does_not_change_the_quantity(seed_lookup):
+    [item] = map_ingredient_line("1 1/2 cups 2% milk", seed_lookup)
+    assert (item.name, item.quantity, item.unit) == ("milk", 1.5, "cup")
