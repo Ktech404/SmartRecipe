@@ -53,6 +53,7 @@ class ErrorCode(str, Enum):
     TOO_FEW_INGREDIENTS = "too_few_ingredients"
     INVALID_INGREDIENTS = "invalid_ingredients"
     VALIDATION_ERROR = "validation_error"
+    NOT_FOUND = "not_found"
     INTERNAL_ERROR = "internal_error"
 
 
@@ -132,6 +133,7 @@ class MissingIngredient(BaseModel):
 
 class RecipeResult(BaseModel):
     recipe_id: int  # primary key of the recipe table
+    slug: str  # the recipe page address: GET /recipes/slug/{slug}
     title: str
     image_url: str | None = None
     source_url: str | None = None  # the page we got the recipe from
@@ -150,6 +152,7 @@ EXAMPLE_RESPONSE = {
     "results": [
         {
             "recipe_id": 1,
+            "slug": "lemon-garlic-chicken-1",
             "title": "Lemon garlic chicken",
             "image_url": None,
             "source_url": "https://example-recipes.com/lemon-garlic-chicken",
