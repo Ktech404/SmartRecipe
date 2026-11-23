@@ -55,12 +55,16 @@ From `backend`, after configuring `.env`:
 .venv/Scripts/python -m uvicorn app.main:app --reload
 ```
 
-Seeding is idempotent and required for search. It loads the ingredient vocabulary
-and allergen groups from `backend/seed/` (`ingredients.csv`, `ingredient_synonyms.csv`,
-`allergen_groups.csv`, `ingredient_allergen_groups.csv`), plus the dietary and cuisine
-preferences defined in `scripts/seed.py`. To change the vocabulary, edit the CSV files
-and run the seed again; existing rows are not overwritten or deleted. Schema changes
-remain managed by Alembic; the application does not create tables automatically.
+Seeding is idempotent and required for search. It loads the ingredient vocabulary,
+allergen groups and ingredient hierarchy from `backend/seed/` (`ingredients.csv`,
+`ingredient_synonyms.csv`, `allergen_groups.csv`, `ingredient_allergen_groups.csv`,
+`ingredient_parents.csv`), plus the dietary and cuisine preferences defined in
+`scripts/seed.py`. `ingredient_parents.csv` says which ingredients are kinds of another
+("cheddar cheese" is a kind of "cheese"); matching, restrictions and substitute
+suggestions all use it. To change the vocabulary, edit the CSV files and run the seed
+again. Synonyms follow the CSV exactly (changed aliases are updated and removed ones
+are deleted); ingredients are never deleted. Schema changes remain managed by Alembic;
+the application does not create tables automatically.
 
 Health: <http://127.0.0.1:8000/health>. Interactive documentation:
 <http://127.0.0.1:8000/docs> and <http://127.0.0.1:8000/redoc>.
@@ -102,7 +106,7 @@ Request (only `ingredients` is required):
 ```
 
 - At least 2 different ingredients are required. Names are matched through the
-  ingredient vocabulary and its synonyms, so "chicken" finds chicken breast.
+  ingredient vocabulary and its synonyms, so "chicken" finds every kind of chicken.
 - `max_minutes` keeps recipes with no stored time. `tools` is the tools the user
   has: a recipe is dropped if it needs a tool that is not listed.
 - The user's saved allergies, allergen groups and blacklist are always applied.

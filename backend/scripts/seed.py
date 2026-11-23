@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from app.db.session import SessionLocal
 from app.db.models import (AllergenGroup, Ingredient, IngredientAllergenGroup,
@@ -12,6 +12,7 @@ from app.db.models import (AllergenGroup, Ingredient, IngredientAllergenGroup,
 # backend/seed/ingredient_synonyms.csv  -> alias, canonical
 # backend/seed/allergen_groups.csv      -> name
 # backend/seed/ingredient_allergen_groups.csv -> ingredient, allergen_group
+# backend/seed/ingredient_parents.csv  -> ingredient, parent ("cheddar cheese" is a kind of "cheese")
 SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
 
 PREFERENCES = [
@@ -52,6 +53,13 @@ def load_ingredient_allergen_groups(seed_dir: Path = SEED_DIR):
                 for r in csv.DictReader(f)]
 
 
+def load_ingredient_parents(seed_dir: Path = SEED_DIR):
+    """Return [(ingredient, parent), ...] from ingredient_parents.csv."""
+    with open(seed_dir / "ingredient_parents.csv", newline="", encoding="utf-8") as f:
+        return [(r["ingredient"].strip(), r["parent"].strip())
+                for r in csv.DictReader(f)]
+
+
 def seed(session):
     for name, category, staple in load_ingredients():
         session.execute(
@@ -61,13 +69,21 @@ def seed(session):
     session.flush()
     ids = {row.name: row.ingredient_id
            for row in session.execute(select(Ingredient)).scalars()}
-    for alias, canonical in load_synonyms().items():
+    # The CSV is the source of truth for synonyms: an alias whose target changed is
+    # updated, and an alias that was removed from the CSV is removed from the
+    # database. (Leaving old rows behind made two aliases clash after a vocabulary
+    # change and broke every search.)
+    synonyms = load_synonyms()
+    for alias, canonical in synonyms.items():
         if canonical not in ids:
             raise ValueError(f"Synonym {alias!r} points at unknown ingredient {canonical!r}")
         session.execute(
             insert(IngredientSynonym)
             .values(alias=alias, ingredient_id=ids[canonical])
-            .on_conflict_do_nothing(index_elements=["alias"]))
+            .on_conflict_do_update(
+                index_elements=["alias"], set_={"ingredient_id": ids[canonical]}))
+    session.execute(
+        delete(IngredientSynonym).where(IngredientSynonym.alias.not_in(list(synonyms))))
     for name in load_allergen_groups():
         session.execute(
             insert(AllergenGroup)
@@ -86,6 +102,14 @@ def seed(session):
             .values(ingredient_id=ids[ingredient], allergen_group_id=group_ids[group])
             .on_conflict_do_nothing(
                 index_elements=["ingredient_id", "allergen_group_id"]))
+    # The hierarchy: matching, restrictions and substitutes all read it.
+    for child, parent in load_ingredient_parents():
+        if child not in ids or parent not in ids:
+            raise ValueError(f"Parent link {child!r} -> {parent!r} names an unknown ingredient")
+        session.execute(
+            update(Ingredient)
+            .where(Ingredient.ingredient_id == ids[child])
+            .values(parent_ingredient_id=ids[parent]))
     for name, ptype in PREFERENCES:
         session.execute(
             insert(Preference)

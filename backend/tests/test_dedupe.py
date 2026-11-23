@@ -73,3 +73,9 @@ def test_dedupe_by_url_keeps_first_and_order():
     ]
     kept = dedupe_by_url(recipes, lambda x: x.source_url)
     assert [x.title for x in kept] == ["A", "B"]
+
+
+def test_more_click_ids_are_dropped_but_real_parameters_stay():
+    url = "https://example.com/r?id=42&gbraid=x&_hsenc=y&mkt_tok=z&ttclid=q&_ga=1"
+    assert normalize_url(url) == normalize_url("https://example.com/r?id=42")
+    assert normalize_url(url) != normalize_url("https://example.com/r?id=43")
