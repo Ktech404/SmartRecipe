@@ -54,6 +54,10 @@ index, a roundup), set is_recipe to false and leave the other fields empty.
 
 Rules:
 - ingredient_lines: one string per ingredient, exactly as written on the page.
+  If the page runs several separate ingredients together on one line (for example
+  "garlic powder salt and pepper" or "1/2 tsp oregano chopped fresh parsley"),
+  write each ingredient as its own string with its own amount. Do not split one
+  ingredient that has a preparation note, such as "1 can (15 oz) tomatoes, diced".
 - instructions: one string per step, in order. If the text has no steps, or ends
   before the steps begin, leave instructions empty. Do not invent steps.
 - servings: only if the page explicitly says how many servings or portions the

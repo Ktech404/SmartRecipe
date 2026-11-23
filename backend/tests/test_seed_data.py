@@ -125,3 +125,15 @@ def test_chicken_is_the_parent_of_every_chicken_cut():
         assert parent_of[cut] == "chicken"
     assert "chicken" in {n for n, _, _ in load_ingredients()}
     assert "chicken" not in load_synonyms()  # bare "chicken" is its own ingredient now
+
+
+def test_every_dairy_looking_ingredient_is_in_the_dairy_group():
+    """Cheeses, creams and cream soups are dairy. Plant milks, nut butters and squash
+    only look like it, so they are listed as the known exceptions."""
+    dairy = {i for i, g in load_ingredient_allergen_groups() if g == "dairy"}
+    not_dairy = {"coconut milk", "coconut cream", "almond milk", "oat milk", "soy milk",
+                 "peanut butter", "almond butter", "butternut squash"}
+    for name, _, _ in load_ingredients():
+        looks_dairy = any(word in name for word in ("cheese", "cream", "milk", "yogurt", "butter"))
+        if looks_dairy and name not in not_dairy:
+            assert name in dairy, f"{name!r} should be in the dairy allergen group"
