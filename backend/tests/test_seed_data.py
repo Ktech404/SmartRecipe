@@ -1,6 +1,6 @@
 """Checks on the seed CSV files. No database needed."""
 from scripts.seed import (load_allergen_groups, load_ingredient_allergen_groups,
-                          load_ingredients, load_synonyms)
+                          load_ingredient_parents, load_ingredients, load_synonyms)
 
 
 def test_no_duplicate_ingredient_names():
@@ -75,3 +75,65 @@ def test_plant_milks_and_plain_rice_are_not_flagged_as_dairy_or_gluten():
     for pair in [("coconut milk", "dairy"), ("almond milk", "dairy"),
                  ("soy milk", "dairy"), ("rice", "gluten"), ("coconut", "tree nuts")]:
         assert pair not in mappings, pair
+
+
+# ---- the ingredient hierarchy (ingredient_parents.csv) --------------------------
+
+
+def test_every_parent_link_points_at_real_ingredients():
+    names = {n for n, _, _ in load_ingredients()}
+    for child, parent in load_ingredient_parents():
+        assert child in names, f"unknown ingredient {child!r}"
+        assert parent in names, f"unknown parent {parent!r}"
+
+
+def test_an_ingredient_has_one_parent_and_there_are_no_loops():
+    links = load_ingredient_parents()
+    children = [c for c, _ in links]
+    assert len(children) == len(set(children)), "an ingredient is listed with two parents"
+    parent_of = dict(links)
+    for start in parent_of:
+        seen, current = {start}, parent_of.get(start)
+        while current is not None:
+            assert current not in seen, f"loop through {current!r}"
+            seen.add(current)
+            current = parent_of.get(current)
+
+
+def test_a_child_never_gains_an_allergen_group_from_its_parent():
+    """Children inherit their parent's allergen groups, so a group on the parent that
+    the child does not belong to would wrongly block it (corn tortilla is not gluten)."""
+    groups: dict[str, set[str]] = {}
+    for ingredient, group in load_ingredient_allergen_groups():
+        groups.setdefault(ingredient, set()).add(group)
+    for child, parent in load_ingredient_parents():
+        extra = groups.get(parent, set()) - groups.get(child, set())
+        assert not extra, f"{child!r} would inherit {sorted(extra)} from {parent!r}"
+
+
+def test_general_cheese_is_dairy_and_the_cheeses_sit_under_it():
+    assert ("cheese", "dairy") in load_ingredient_allergen_groups()
+    parent_of = dict(load_ingredient_parents())
+    assert parent_of["cheddar cheese"] == "cheese"
+    assert parent_of["mozzarella cheese"] == "cheese"
+    assert "cream cheese" not in parent_of and "cottage cheese" not in parent_of
+
+
+def test_chicken_is_the_parent_of_every_chicken_cut():
+    parent_of = dict(load_ingredient_parents())
+    for cut in ["chicken breast", "chicken thigh", "chicken wing", "whole chicken", "ground chicken"]:
+        assert parent_of[cut] == "chicken"
+    assert "chicken" in {n for n, _, _ in load_ingredients()}
+    assert "chicken" not in load_synonyms()  # bare "chicken" is its own ingredient now
+
+
+def test_every_dairy_looking_ingredient_is_in_the_dairy_group():
+    """Cheeses, creams and cream soups are dairy. Plant milks, nut butters and squash
+    only look like it, so they are listed as the known exceptions."""
+    dairy = {i for i, g in load_ingredient_allergen_groups() if g == "dairy"}
+    not_dairy = {"coconut milk", "coconut cream", "almond milk", "oat milk", "soy milk",
+                 "peanut butter", "almond butter", "butternut squash"}
+    for name, _, _ in load_ingredients():
+        looks_dairy = any(word in name for word in ("cheese", "cream", "milk", "yogurt", "butter"))
+        if looks_dairy and name not in not_dairy:
+            assert name in dairy, f"{name!r} should be in the dairy allergen group"

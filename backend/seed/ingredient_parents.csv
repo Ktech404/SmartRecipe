@@ -1,0 +1,45 @@
+ingredient,parent
+cheddar cheese,cheese
+mozzarella cheese,cheese
+parmesan cheese,cheese
+feta cheese,cheese
+goat cheese,cheese
+swiss cheese,cheese
+provolone cheese,cheese
+monterey jack cheese,cheese
+gouda cheese,cheese
+blue cheese,cheese
+pork chop,pork
+ground pork,pork
+pork tenderloin,pork
+pork shoulder,pork
+ground beef,beef
+ground turkey,turkey
+ground lamb,lamb
+italian sausage,sausage
+chorizo,sausage
+brown rice,rice
+basmati rice,rice
+jasmine rice,rice
+arborio rice,rice
+wild rice,rice
+spaghetti,pasta
+penne,pasta
+macaroni,pasta
+fettuccine,pasta
+orzo,pasta
+whole wheat bread,bread
+greek yogurt,yogurt
+dijon mustard,mustard
+balsamic vinegar,vinegar
+red wine vinegar,vinegar
+apple cider vinegar,vinegar
+rice vinegar,vinegar
+white vinegar,vinegar
+cherry tomato,tomato
+red onion,onion
+chicken breast,chicken
+chicken thigh,chicken
+chicken wing,chicken
+whole chicken,chicken
+ground chicken,chicken

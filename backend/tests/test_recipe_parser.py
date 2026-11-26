@@ -220,3 +220,9 @@ def test_other_errors_map_to_parser_error_without_leaking_details():
     err = _map_error(_WithCode(400))
     assert type(err) is ParserError
     assert "secret request detail" not in str(err)
+
+
+def test_prompt_asks_for_run_together_ingredients_to_be_split_but_not_prep_notes():
+    assert "runs several separate ingredients together" in recipe_parser.PROMPT
+    assert "own string" in recipe_parser.PROMPT
+    assert "Do not split one" in recipe_parser.PROMPT

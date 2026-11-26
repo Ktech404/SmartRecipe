@@ -396,7 +396,7 @@ def test_a_leading_dash_does_not_turn_a_quantity_negative_or_lose_the_unit(seed_
         ("1 tbs parsley flakes", "parsley", 1.0, "tbsp"),
         ("1 red chilli, thinly sliced", "chili pepper", 1.0, None),
         ("40 g of wheat flour", "all purpose flour", 40.0, "g"),
-        ("2 cups cooked chicken", "chicken breast", 2.0, "cup"),
+        ("2 cups cooked chicken", "chicken", 2.0, "cup"),
         ("1 T olive oil (divided)", "olive oil", 1.0, "tbsp"),
         ("2-4 TB mushroom soy sauce", "soy sauce", 2.0, "tbsp"),
         ("3 stalks celery, diced", "celery", 3.0, None),
@@ -425,10 +425,10 @@ def test_real_page_wording_maps_to_one_ingredient(line, name, quantity, unit):
 
 
 @pytest.mark.skipif(not (SEED / "ingredients.csv").exists(), reason="seed CSVs missing")
-def test_a_plain_chicken_search_resolves_to_chicken_breast():
+def test_a_plain_chicken_search_resolves_to_the_general_chicken():
     from app.services.normalization import resolve_ingredient
 
-    assert resolve_ingredient("chicken", load_seed_lookup(SEED)) == "chicken breast"
+    assert resolve_ingredient("chicken", load_seed_lookup(SEED)) == "chicken"
 
 
 @pytest.mark.skipif(not (SEED / "ingredients.csv").exists(), reason="seed CSVs missing")

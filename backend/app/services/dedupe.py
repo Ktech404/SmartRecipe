@@ -24,6 +24,10 @@ T = TypeVar("T")
 _TRACKING_PARAMS = {
     "fbclid", "gclid", "msclkid", "mc_cid", "mc_eid", "igshid", "ref",
     "ref_src", "source", "campaign", "cmp", "pin_unauth",
+    # More ad, email and analytics click ids.
+    "dclid", "gbraid", "wbraid", "yclid", "ttclid", "twclid", "_ga", "_gl",
+    "_hsenc", "_hsmi", "mkt_tok", "vero_id", "vero_conv", "ck_subscriber_id",
+    "oly_enc_id", "oly_anon_id", "s_kwcid",
     # Blog comment links (Blogger, WordPress): same post, different anchor.
     "showcomment", "replytocom",
 }
