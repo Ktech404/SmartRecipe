@@ -1,4 +1,5 @@
 """POST /recipes/search: find recipes for the ingredients a user has.  (SCRUM-35)
+GET /recipes/slug/{slug}: one stored recipe with its ingredients and steps.  (SCRUM-39)
 
 Flow
 1. Check the request: enough ingredients, and every one recognized (1.3.2, 1.3.7,
@@ -27,6 +28,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_session
 from app.db.models import User
 from app.providers.base import RecipeSearchQuery
+from app.schemas.recipe_detail import RecipeDetail
 from app.schemas.search import (
     ErrorCode,
     ErrorDetail,
@@ -41,11 +43,13 @@ from app.services.live_search import (
     build_live_fetcher,
     get_recent_searches,
 )
+from app.services.recipe_detail import load_recipe_detail
 from app.services.recipe_search import (
     load_restrictions,
     resolve_ingredient_ids,
     search_stored_recipes,
 )
+from app.services.slugs import parse_slug_id
 
 log = logging.getLogger(__name__)
 
@@ -158,3 +162,28 @@ def search_recipes(
         offset=payload.offset,
         degraded=degraded,
     )
+
+
+@router.get(
+    "/slug/{slug}",
+    response_model=RecipeDetail,
+    responses={404: {"model": ErrorResponse, "description": "No recipe at this address"}},
+)
+def get_recipe_by_slug(
+    slug: str,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """The full recipe page. The id at the end of the slug is what is looked up."""
+    recipe_id = parse_slug_id(slug)
+    detail = (
+        load_recipe_detail(session, recipe_id, load_restrictions(session, user.user_id))
+        if recipe_id is not None
+        else None
+    )
+    if detail is None:
+        body = ErrorResponse(
+            error=ErrorDetail(code=ErrorCode.NOT_FOUND, message="Recipe not found.")
+        )
+        return JSONResponse(status_code=404, content=body.model_dump(mode="json", exclude_none=True))
+    return detail

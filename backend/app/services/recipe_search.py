@@ -59,6 +59,7 @@ from app.services.matching import (
 )
 from app.services.normalization import resolve_ingredient
 from app.services.restrictions import Restrictions, filter_safe
+from app.services.slugs import make_slug
 from app.services.substitutes import substitutes_for
 
 LOW_MIN_SCORE = 0.25  # below this a recipe is not worth showing
@@ -213,6 +214,7 @@ def _to_result(
 ) -> RecipeResult:
     return RecipeResult(
         recipe_id=recipe.recipe_id,
+        slug=make_slug(recipe.title, recipe.recipe_id),
         title=recipe.title,
         image_url=recipe.image_url,
         source_url=recipe.source_url,
