@@ -41,9 +41,9 @@ export default function HomePage() {
         </h1>
 
         <p className="hero-description">
-          Tell us what's in your kitchen, then leave the 
-          hard part to us. We'll help you find inspiration, 
-          discover recipes, and decide what's for dinner.
+          Tell us what&apos;s in your kitchen, then leave the 
+          hard part to us. We&apos;ll help you find inspiration, 
+          discover recipes, and decide what&apos;s for dinner.
         </p>
 
         <div className="hero-logo" aria-hidden="true">
@@ -102,7 +102,7 @@ export default function HomePage() {
           <h2>Start with what you have</h2>
           <p>
             Recipes can be ranked by how well your ingredients
-            match. If you can't find the right meal, try
+            match. If you can&apos;t find the right meal, try
             generating a new idea.
           </p>
           <Link href="/search" className="text-link">
