@@ -3,6 +3,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { savePendingSearch, type SearchMode } from "@/src/services/searchHandoff";
+import type { RecipeSearchRequest } from "@/src/types/recipeApi";
 
 type Ingredient = {
   id: string;
@@ -63,30 +65,28 @@ export default function SearchPage() {
     );
   }
 
-  function discoverRecipes(mode: string) {
-    // Keep the search details in the URL for future functionality.
-    const params = new URLSearchParams();
+  function discoverRecipes(mode: SearchMode) {
+    // The backend matches on ingredient names, so only the names are sent. (The
+    // quantity and unit pickers use different unit names than the backend.)
+    const request: RecipeSearchRequest = {
+      ingredients: ingredients.map((ingredient) => ({ name: ingredient.name })),
+      servings: Number(servings) || 2,
+      tools,
+      limit: 20,
+    };
 
-    const query = [
-      ...ingredients.map((ingredient) => ingredient.name),
-      mealDescription.trim(),
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    if (query) {
-      params.set("q", query);
+    const minutes = Number(maxTime);
+    if (minutes > 0 && minutes < 120) {
+      request.max_minutes = minutes; // 120 means "No time limit"
     }
 
-    params.set("mode", mode);
-    params.set("time", maxTime);
-    params.set("servings", servings || "2");
-
-    if (tools.length > 0) {
-      params.set("tools", tools.join(","));
+    const description = mealDescription.trim();
+    if (description) {
+      request.description = description;
     }
 
-    router.push(`/search/results?${params.toString()}`);
+    savePendingSearch({ mode, request });
+    router.push("/search/results");
   }
 
   return (

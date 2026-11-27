@@ -1,21 +1,20 @@
 import { apiRequest } from "@/src/api/client";
 import { API_ENDPOINTS } from "@/src/api/endpoints";
+import type { Recipe, GenerateRecipeRequest, SavedRecipe } from "@/src/types/recipe";
 import type {
-  Recipe,
-  RecipeSearchCriteria,
-  RecipeSearchResponse,
-  GenerateRecipeRequest,
-  SavedRecipe,
-} from "@/src/types/recipe";
+  RecipeDetail,
+  RecipeSearchRequest,
+  RecipeSearchResult,
+} from "@/src/types/recipeApi";
 
 export async function searchRecipes(
-  criteria: RecipeSearchCriteria
-): Promise<RecipeSearchResponse> {
-  return apiRequest<RecipeSearchResponse>(
+  request: RecipeSearchRequest
+): Promise<RecipeSearchResult> {
+  return apiRequest<RecipeSearchResult>(
     API_ENDPOINTS.SEARCH_RECIPES,
     {
       method: "POST",
-      body: JSON.stringify(criteria),
+      body: JSON.stringify(request),
     }
   );
 }
@@ -34,8 +33,8 @@ export async function generateRecipe(
 
 export async function getRecipeBySlug(
   slug: string
-): Promise<Recipe> {
-  return apiRequest<Recipe>(
+): Promise<RecipeDetail> {
+  return apiRequest<RecipeDetail>(
     API_ENDPOINTS.RECIPE_DETAILS(slug)
   );
 }
