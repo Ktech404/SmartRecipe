@@ -34,7 +34,7 @@ _UNITS = frozenset(
     gram grams g kilogram kilograms kg ounce ounces oz pound pounds lb lbs
     milliliter milliliters ml liter liters litre litres l
     clove cloves can cans pack packs package packages pinch dash bunch
-    slice slices stick sticks
+    slice slices stick sticks gm gms gr ozs sprig sprigs pint pints quart quarts
     """.split()
 )
 

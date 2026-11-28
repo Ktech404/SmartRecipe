@@ -476,3 +476,71 @@ def test_everyday_wording_from_the_second_ingestion_run(seed_lookup, line, expec
 def test_fat_percentage_does_not_change_the_quantity(seed_lookup):
     [item] = map_ingredient_line("1 1/2 cups 2% milk", seed_lookup)
     assert (item.name, item.quantity, item.unit) == ("milk", 1.5, "cup")
+
+
+@pytest.mark.parametrize(
+    "line, name, quantity, unit",
+    [
+        ("25gm butter", "butter", 25.0, "g"),
+        ("425 gm strong white bread flour", "bread flour", 425.0, "g"),
+        ("250ml warm milk", "milk", 250.0, "ml"),
+        ("15ml active dried yeast", "yeast", 15.0, "ml"),
+        ("8 ozs. reduced fat Monterey Jack Cheese, shreeded 2 cups", "monterey jack cheese", 8.0, "oz"),
+        ("1 pint grape tomatoes, halved", "cherry tomato", 1.0, "pint"),
+        ("12 6 inch corn tortillas", "corn tortilla", 12.0, None),
+        ("1 (1 pound) bag frozen corn, thawed", "corn", 1.0, None),
+        ("1 14 1/2 oz. can tomatoes cut up", "tomato", 1.0, "can"),
+        ("2 cups cooked or canned, drained and rinsed black beans", "black bean", 2.0, "cup"),
+        ("2 15 oz. cans black beans rinsed and drained", "black bean", 2.0, "can"),
+        ("Salt as per the requirement", "salt", None, None),
+        ("Colavita olive oil", "olive oil", None, None),
+        ("Extra grated Parmesan cheese, for garnish", "parmesan cheese", None, None),
+        ("Mixed mushrooms (cremini, button, shiitake), sliced", "mushroom", None, None),
+        ("3/4 cup bottled picante sauce or green salsa", "salsa", 0.75, "cup"),
+        ("fresh herbs", "herb", None, None),
+        ("Beans", "bean", None, None),
+        ("4 chicken tenders", "chicken breast", 4.0, None),
+        ("Pecorino Romano or Parmigiana Cheese", "pecorino romano cheese", None, None),
+        ("parmasean cheese", "parmesan cheese", None, None),
+    ],
+)
+def test_wording_from_the_third_ingestion_run(seed_lookup, line, name, quantity, unit):
+    [item] = map_ingredient_line(line, seed_lookup)
+    assert (item.name, item.quantity, item.unit) == (name, quantity, unit)
+
+
+def test_the_new_rules_leave_similar_lines_alone(seed_lookup):
+    for line, name in [
+        ("1 inch piece fresh ginger", "ginger"),
+        ("1 15-ounce can black beans", "black bean"),
+        ("1 extra large egg", "egg"),
+        ("extra virgin olive oil", "olive oil"),
+        ("2 large cloves garlic", "garlic"),
+    ]:
+        [item] = map_ingredient_line(line, seed_lookup)
+        assert item.name == name, line
+
+
+@pytest.mark.parametrize(
+    "line, name, quantity, unit",
+    [
+        ("1 cup chopped yellow, green, or red bell pepper", "bell pepper", 1.0, "cup"),
+        ("150g cooked white rice per serving (4 servings total)", "rice", 150.0, "g"),
+        ("1 1/2 cups chopped green sweet pepper 2 medium sizes", "bell pepper", 1.5, "cup"),
+        ("2 tablespoons lightly-packed brown sugar", "brown sugar", 2.0, "tbsp"),
+        ("4 whole wheat hamburger buns, split", "hamburger bun", 4.0, None),
+        ("Optional: 1/2 teaspoon paprika", "paprika", 0.5, "tsp"),
+        ("fresh, packed spinach", "spinach", None, None),
+        ("1 lb dry chickpeas rinsed and picked over", "chickpea", 1.0, "lb"),
+        ("Salt as taste", "salt", None, None),
+        ("1 tsp ground cummin", "cumin", 1.0, "tsp"),
+        ("one rosemary sprig", "rosemary", 1.0, None),
+        ("the thyme", "thyme", None, None),
+        ("500 gr Of potatoes", "potato", 500.0, "g"),
+        ("hot pepper sauce", "hot sauce", None, None),
+        ("2 mild red chillies", "chili pepper", 2.0, None),
+    ],
+)
+def test_wording_from_the_fourth_ingestion_run(seed_lookup, line, name, quantity, unit):
+    [item] = map_ingredient_line(line, seed_lookup)
+    assert (item.name, item.quantity, item.unit) == (name, quantity, unit)
