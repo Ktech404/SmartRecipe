@@ -46,6 +46,7 @@ _UNIT_NAMES = {
     "kilogram": "kg", "kilograms": "kg", "ounce": "oz", "ounces": "oz",
     "pound": "lb", "pounds": "lb", "lbs": "lb", "milliliter": "ml",
     "milliliters": "ml", "liter": "l", "liters": "l", "litre": "l", "litres": "l",
+    "gm": "g", "gms": "g", "gr": "g", "ozs": "oz",
 }
 _MIN_INGREDIENTS = 2
 
@@ -75,12 +76,35 @@ _CLEANUP_RULES = [
     (re.compile(r"(?<=\d)\s+t\b\.?(?=\s)"), " tsp"),
     # "3 stalks celery", "8 leaves basil"
     (re.compile(r"(?<=\d)\s+(?:stalks?|leaves)\s+(?:of\s+)?", re.I), " "),
+    # "Optional: 1/2 teaspoon paprika", "the thyme"
+    (re.compile(r"^\s*optional\s*:\s*", re.I), ""),
+    (re.compile(r"^\s*the\s+(?=[A-Za-z])", re.I), ""),
+    # "chopped yellow, green, or red bell pepper": the colors would cut the line short
+    (re.compile(r"\b(?:(?:red|green|yellow|orange),\s*)+(?:or\s+)?(?:red|green|yellow|orange)\s+(?=(?:bell\s+)?pepper)", re.I), ""),
+    # "fresh, packed spinach", "2 tablespoons lightly-packed brown sugar"
+    (re.compile(r"\b(fresh|dried),\s+(?=packed\b)", re.I), r"\1 "),
+    (re.compile(r"\b(?:lightly|firmly|loosely)[\s-]packed\s+", re.I), ""),
+    # "1 lb dry chickpeas rinsed and picked over"
+    (re.compile(r"\b(?:rinsed|drained|sorted)\s+and\s+picked\s+over\b", re.I), ""),
+    # "1 1/2 cups green sweet pepper 2 medium sizes": a stray size note
+    (re.compile(r"\s+\d+\s+(?:medium|large|small)\s+sizes?\b.*$", re.I), ""),
+    # "cooked white rice per serving"
+    (re.compile(r"\s*\bper\s+serving\b", re.I), ""),
     # "1 tomato per person"
     (re.compile(r"\s*\bper\s+person\b", re.I), ""),
     # "1 pound penne pasta or other short tubular pasta"
     (re.compile(r"\s+or\s+other\s+(?:[a-z]+\s+){0,3}pasta\b.*$", re.I), ""),
     # brand names in front of an ordinary ingredient: "Morton salt", "Green Giant green beans"
-    (re.compile(r"\b(?:morton|diamond crystal|green giant|mccormick|fresh express|kikkoman)\b\u00ae?\s*", re.I), ""),
+    (re.compile(r"\b(?:morton|diamond crystal|green giant|mccormick|fresh express|kikkoman|colavita|bertolli|pompeian|barilla|kraft|philadelphia|heinz)\b\u00ae?\s*", re.I), ""),
+    # "12 6 inch corn tortillas": the count comes first, then the size of each
+    (re.compile(r"^\s*(\d+)\s+\d+(?:\.\d+)?[\s-]*inch(?:es)?\s+(?!(?:piece|pieces|knob|chunk)\b)(?=[A-Za-z])", re.I), r"\1 "),
+    # "1 (1 pound) bag frozen corn", "2 bags spinach": the package is not the ingredient
+    (re.compile(r"(\d)\s+(?:\([^)]*\)\s+)?(?:bags?|boxe?s?)\s+(?:of\s+)?(?=[A-Za-z])", re.I), r"\1 "),
+    # "cooked or canned, drained and rinsed black beans": keep the ingredient
+    (re.compile(r"\b(?:cooked|frozen|fresh|dry|dried)\s+or\s+(?:canned|frozen|fresh|cooked)\b,?\s*", re.I), ""),
+    (re.compile(r"\b(?:drained|rinsed)\s+and\s+(?:drained|rinsed)\b,?\s*", re.I), ""),
+    # "tomatoes cut up"
+    (re.compile(r"\s+cut\s+up\b", re.I), ""),
     # "4 4-ounce pork chops": the count comes first, then the size of each
     (re.compile(r"^\s*(\d+)\s+\d+(?:\.\d+)?[\s-]*(?:ounces?|oz)\b\.?\s+(?!(?:cans?|jars?|packages?|pkgs?|boxe?s?|cartons?|bottles?|blocks?|bags?)\b)(?=[A-Za-z])", re.I), r"\1 "),
     # quantities: "1½" -> "1 ½", "1-1/3" -> "1 1/3", "11/2" -> "1 1/2", "One cucumber" -> "1 cucumber"
@@ -104,7 +128,7 @@ _CLEANUP_RULES = [
     (re.compile(r"(?<=\d)\s+tins?\b", re.I), " can"),
     (re.compile(r"(?<=\d)\s+pkgs?\b\.?", re.I), " package"),
     # "1 15-ounce can black beans", "one 14-oz. block tofu": keep the count, drop the package size
-    (re.compile(r"^\s*(\d+)\s+\d+(?:\.\d+)?[\s-]*(?:ounces?|oz)\.?\s+(?:cans?|jars?|packages?|pkgs?|boxe?s?|cartons?|bottles?|blocks?|bags?)\b\.?\s*(?:of\s+)?", re.I), r"\1 can "),
+    (re.compile(r"^\s*(\d+)\s+\d+(?:\.\d+|\s+\d+/\d+)?[\s-]*(?:ounces?|oz)\.?\s+(?:cans?|jars?|packages?|pkgs?|boxe?s?|cartons?|bottles?|blocks?|bags?)\b\.?\s*(?:of\s+)?", re.I), r"\1 can "),
     # "14 oz block of tofu": keep the weight, drop the package word
     (re.compile(r"(\d+(?:\.\d+)?[\s-]*(?:ounces?|oz|g|ml))\.?\s+(?:blocks?|bags?|boxe?s?|jars?|packages?|cartons?|bottles?)\s+(?:of\s+)?", re.I), r"\1 "),
     # "1 can (15 oz) can black beans"
@@ -157,7 +181,7 @@ _CLEANUP_RULES = [
     (re.compile(r"\b(?:hot|warm|cold|ice|boiling|lukewarm)\s+water\b", re.I), "water"),
     (re.compile(r"\b(?:cooked and chilled|chilled)\s+", re.I), ""),
     # "Salt to taste", "olive oil for frying": notes without a comma
-    (re.compile(r"\b(?:to taste|as needed|for serving|for garnish|for frying|for dusting)\b", re.I), " "),
+    (re.compile(r"\b(?:to taste|as needed|as required|as taste|as per (?:the )?(?:requirement|need|taste)s?|for serving|for garnish|for frying|for dusting)\b", re.I), " "),
     # "boneless, skinless chicken thighs": the comma would cut the line short
     (re.compile(r"\b(boneless|skinless|peeled|seeded|cored|trimmed|pitted),\s+(?=\w)", re.I), r"\1 "),
     # "1 cup uncooked rice"
@@ -231,7 +255,7 @@ def parse_quantity_and_unit(line: str) -> tuple[float | None, str | None]:
 # cranberries" still match exactly when the vocabulary has them, while "ground
 # cinnamon" falls back to "cinnamon".
 _SOFT_WORDS = frozenset(
-    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked crumbled ripe scrubbed seeded shelled hot baby super firm larger fine condensed crusty beaten soft snipped".split()
+    "dried ground whole light cooked raw plain toasted unsalted salted sweetened unsweetened lean crushed canned steamed boiled thin thick dry cold coarse cracked crumbled ripe scrubbed seeded shelled hot baby super firm larger fine condensed crusty beaten soft snipped warm extra mixed bottled jarred prepared".split()
 )
 
 

@@ -137,3 +137,14 @@ def test_every_dairy_looking_ingredient_is_in_the_dairy_group():
         looks_dairy = any(word in name for word in ("cheese", "cream", "milk", "yogurt", "butter"))
         if looks_dairy and name not in not_dairy:
             assert name in dairy, f"{name!r} should be in the dairy allergen group"
+
+
+def test_generic_herb_bean_and_pecorino_are_in_the_hierarchy():
+    names = {n for n, _, _ in load_ingredients()}
+    parent_of = dict(load_ingredient_parents())
+    for name in ["herb", "bean", "pecorino romano cheese"]:
+        assert name in names
+    assert parent_of["basil"] == "herb"
+    assert parent_of["black bean"] == "bean"
+    assert parent_of["pecorino romano cheese"] == "cheese"
+    assert "green bean" not in parent_of and "chickpea" not in parent_of
